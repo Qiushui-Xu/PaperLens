@@ -33,6 +33,57 @@
 
 ---
 
+## 🚀 快速开始
+
+### Docker 部署（生产推荐）
+
+```bash
+# 1️⃣ 克隆项目
+git clone https://github.com/Color2333/PaperMind.git && cd PaperMind
+
+# 2️⃣ 配置环境变量
+cp deploy/.env.example deploy/.env
+vim deploy/.env  # 编辑配置，至少填写 LLM API Key 和 SMTP
+
+# 3️⃣ 一键部署
+chmod +x scripts/docker_deploy.sh
+./scripts/docker_deploy.sh
+
+# 4️⃣ 访问服务
+# 🌐 前端：http://localhost:3002
+# 📡 后端 API: http://localhost:8002
+# 📚 API 文档：http://localhost:8002/docs
+```
+
+### 本地开发
+
+```bash
+# 1️⃣ 克隆项目
+git clone https://github.com/Color2333/PaperMind.git && cd PaperMind
+
+# 2️⃣ 后端
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[llm,pdf]"
+cp .env.example .env
+vim .env  # 编辑 .env 填入 LLM API Key
+python scripts/local_bootstrap.py  # 初始化数据库
+uvicorn apps.api.main:app --reload --port 8000
+
+# 3️⃣ 前端
+cd frontend && npm install && npm run dev
+# 🌐 打开 http://localhost:5173
+```
+
+### 站点认证（可选）
+
+```bash
+# 在 .env 中设置密码即可启用
+AUTH_PASSWORD=your_password_here
+AUTH_SECRET_KEY=your_random_secret_key
+```
+
+---
+
 ## 🎯 这是什么？
 
 PaperMind 是一个**面向科研工作者的 AI 增强平台**，帮你：
@@ -235,61 +286,7 @@ PaperMind 是一个**面向科研工作者的 AI 增强平台**，帮你：
               │   每日简报 / 每周图谱    │
               └─────────────────────────┘
 ```
-
 ---
-
-## 🚀 快速开始
-
-### 本地开发
-
-```bash
-# 1️⃣ 克隆项目
-git clone https://github.com/Color2333/PaperMind.git && cd PaperMind
-
-# 2️⃣ 后端
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[llm,pdf]"
-cp .env.example .env
-# 编辑 .env 填入 LLM API Key
-python scripts/local_bootstrap.py  # 初始化数据库
-uvicorn apps.api.main:app --reload --port 8000
-
-# 3️⃣ 前端
-cd frontend && npm install && npm run dev
-# 🌐 打开 http://localhost:5173
-```
-
-### Docker 部署（生产推荐）
-
-```bash
-# 复制环境变量
-cp .env.example .env
-# 编辑 .env 填入所有配置
-
-# 一键启动
-docker compose up -d --build
-# 三容器：backend / worker / frontend(nginx)
-```
-
-### 站点认证（可选）
-
-```bash
-# 在 .env 中设置密码即可启用
-AUTH_PASSWORD=your_password_here
-AUTH_SECRET_KEY=your_random_secret_key
-```
-#MP|
-#TB|---
-#RS|
-#BT|## 📚 完整文档
-#NK|
-#YV|- **[📖 部署 Wiki](WIKI_DEPLOYMENT.md)** - 从本地开发到生产环境，一站式部署指南
-#QW|- **[🔧 技术细节](TECH_DETAILS.md)** - 架构设计、核心流程、性能优化
-#BK|
-#TB|---
-#BT|
----
-
 ## ⚙️ 环境变量
 
 | 变量 | 说明 | 默认值 |
