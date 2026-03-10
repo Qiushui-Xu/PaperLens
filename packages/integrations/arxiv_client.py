@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import xml.etree.ElementTree as ElementTree
 from datetime import date, datetime, timedelta
 
 import httpx
@@ -19,17 +20,20 @@ def _build_arxiv_query(raw: str, days_back: int = 7) -> str:
 
     - 已是结构化查询（含 all:/ti: 等）直接返回
     - 否则按空格拆分，取前 3 个关键词用 AND 连接（避免 429）
-    - 自动添加最近 N 天的日期范围过滤
+    - 当 days_back > 0 时自动添加最近 N 天的日期范围过滤
     """
     raw = raw.strip()
     if not raw:
         return raw
+    # 日期过滤（days_back <= 0 时不添加）
+    date_filter = ""
+    if days_back > 0:
+        from_date = datetime.now() - timedelta(days=days_back)
+        date_filter = f" AND submittedDate:[{from_date.strftime('%Y%m%d')}000000 TO *]"
+
     if re.search(r"\b(all|ti|au|abs|cat|co|jr|rn|id):", raw):
         # 已经是结构化查询，检查是否已有日期过滤
         if "submittedDate:" not in raw:
-            # 添加日期范围过滤（最近 N 天）
-            from_date = datetime.now() - timedelta(days=days_back)
-            date_filter = f" AND submittedDate:[{from_date.strftime('%Y%m%d')}000000 TO *]"
             return raw + date_filter
         return raw
     # 拆分词汇，跳过短词（<2 字符），最多取 3 个
@@ -37,9 +41,6 @@ def _build_arxiv_query(raw: str, days_back: int = 7) -> str:
     if not tokens:
         return f"all:{raw}"
     tokens = tokens[:3]
-    # 添加日期范围过滤（最近 N 天）
-    from_date = datetime.now() - timedelta(days=days_back)
-    date_filter = f" AND submittedDate:[{from_date.strftime('%Y%m%d')}000000 TO *]"
     return " AND ".join(f"all:{t}" for t in tokens) + date_filter
 
 
@@ -83,7 +84,7 @@ class ArxivClient:
             "start": start,
             "max_results": max_results,
         }
-        # 自动重试（429 限流 + 网络抖动）
+        # 自动重试（429 限流 + 网络抖动 + 500 回退）
         last_exc: Exception | None = None
         for attempt in range(3):
             try:
@@ -92,12 +93,21 @@ class ArxivClient:
                 return self._parse_atom(response.text)
             except httpx.HTTPStatusError as exc:
                 last_exc = exc
-                if exc.response.status_code == 429:
+                status = exc.response.status_code
+                if status == 429:
                     record_rate_limit_error("arxiv")
                     wait = 3 * (attempt + 1)
                     logger.warning("ArXiv 429 限流，等待 %ds 重试...", wait)
                     time.sleep(wait)
                     continue
+                elif status == 500 and "submittedDate:" in structured_query:
+                    # arXiv API 日期过滤可能有问题，尝试不带日期的查询
+                    logger.warning("ArXiv 500 错误（可能是日期过滤问题），尝试不带日期的查询")
+                    simple_query = _build_arxiv_query(query, days_back=0)  # 不添加日期
+                    params["search_query"] = simple_query
+                    response = self.client.get(ARXIV_API_URL, params=params)
+                    response.raise_for_status()
+                    return self._parse_atom(response.text)
                 raise
             except httpx.TimeoutException as exc:
                 last_exc = exc

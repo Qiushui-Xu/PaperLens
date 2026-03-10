@@ -125,7 +125,6 @@ class PaperPipelines:
                         max_results=this_batch,
                         sort_by=sort_by,
                         start=start,
-                        days_back=effective_days_back,
                     )
                     total_fetched += len(papers)
 
@@ -180,7 +179,7 @@ class PaperPipelines:
                     ).start()
 
                 logger.info(
-                    "✅ 抓取完成：共 %d 篇新论文（从 %d 篇中筛选）",
+                    "抓取完成：共 %d 篇新论文（从 %d 篇中筛选）",
                     new_papers_count,
                     total_fetched,
                 )
