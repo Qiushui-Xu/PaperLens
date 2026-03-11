@@ -42,12 +42,11 @@
 git clone https://github.com/Color2333/PaperMind.git && cd PaperMind
 
 # 2️⃣ 配置环境变量
-cp deploy/.env.example deploy/.env
-vim deploy/.env  # 编辑配置，至少填写 LLM API Key 和 SMTP
+cp .env.example .env
+vim .env  # 编辑配置，至少填写 LLM API Key
 
 # 3️⃣ 一键部署
-chmod +x scripts/docker_deploy.sh
-./scripts/docker_deploy.sh
+docker compose up -d --build
 
 # 4️⃣ 访问服务
 # 🌐 前端：http://localhost:3002
@@ -61,15 +60,21 @@ chmod +x scripts/docker_deploy.sh
 # 1️⃣ 克隆项目
 git clone https://github.com/Color2333/PaperMind.git && cd PaperMind
 
-# 2️⃣ 后端
+# 2️⃣ 一键初始化（推荐）
+python scripts/dev_setup.py
+# 脚本会自动：检查Python版本 → 创建虚拟环境 → 安装依赖 → 复制配置 → 初始化数据库
+
+# 或手动初始化：
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[llm,pdf]"
 cp .env.example .env
 vim .env  # 编辑 .env 填入 LLM API Key
-python scripts/local_bootstrap.py  # 初始化数据库
+python scripts/local_bootstrap.py
+
+# 3️⃣ 启动后端
 uvicorn apps.api.main:app --reload --port 8000
 
-# 3️⃣ 前端
+# 4️⃣ 启动前端
 cd frontend && npm install && npm run dev
 # 🌐 打开 http://localhost:5173
 ```
