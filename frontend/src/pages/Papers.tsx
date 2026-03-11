@@ -1,15 +1,15 @@
 /**
  * Papers - 论文库（分页 + 文件夹/日期分类导航）
- * @author Bamzc
+ * @author Color2333
  */
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Badge, Empty, Spinner, Modal, Input } from "@/components/ui";
 import { PaperListSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/contexts/ToastContext";
-import { paperApi, ingestApi, topicApi, pipelineApi, actionApi, tasksApi, type FolderStats, type CollectionAction } from "@/services/api";
+import { paperApi, ingestApi, topicApi, pipelineApi, actionApi, tasksApi } from "@/services/api";
 import { formatDate, truncate } from "@/lib/utils";
-import type { Paper, Topic } from "@/types";
+import type { Paper, Topic, FolderStats, CollectionAction } from "@/types";
 import {
   FileText,
   Download,

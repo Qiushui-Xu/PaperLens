@@ -1,15 +1,15 @@
 /**
  * Dashboard - 系统总览（现代精致版）
- * @author Bamzc
+ * @author Color2333
  */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Badge } from "@/components/ui";
 import { StatCardSkeleton } from "@/components/Skeleton";
 import { useGlobalTasks } from "@/contexts/GlobalTaskContext";
-import { systemApi, metricsApi, pipelineApi, todayApi, type TodaySummary } from "@/services/api";
+import { systemApi, metricsApi, pipelineApi, todayApi } from "@/services/api";
 import { formatDuration, timeAgo } from "@/lib/utils";
-import type { SystemStatus, CostMetrics, PipelineRun } from "@/types";
+import type { SystemStatus, CostMetrics, PipelineRun, TodaySummary } from "@/types";
 import {
   Activity,
   FileText,

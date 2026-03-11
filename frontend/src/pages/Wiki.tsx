@@ -1,11 +1,10 @@
 /**
  * Wiki - Manus 风格结构化知识百科
- * @author Bamzc
+ * @author Color2333
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardHeader, Button, Tabs, Spinner, Empty } from "@/components/ui";
 import { wikiApi, generatedApi, tasksApi } from "@/services/api";
-import type { TaskStatus } from "@/services/api";
 import type {
   PaperWiki,
   TopicWiki,
@@ -18,6 +17,7 @@ import type {
   ScholarMetadataItem,
   GeneratedContentListItem,
   GeneratedContent,
+  TaskStatus,
 } from "@/types";
 import Markdown from "@/components/Markdown";
 import {
