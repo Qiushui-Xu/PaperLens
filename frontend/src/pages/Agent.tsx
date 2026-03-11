@@ -1,7 +1,7 @@
 /**
  * Agent 对话页面 - 纯渲染壳，核心状态由 AgentSessionContext 管理
  * 切换页面不会丢失 SSE 流和进度
- * @author Bamzc
+ * @author Color2333
  */
 import { useState, useRef, useEffect, useCallback, memo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
@@ -38,7 +38,8 @@ import {
   ArrowDown,
 } from "lucide-react";
 import { useAgentSession, type ChatItem, type StepItem } from "@/contexts/AgentSessionContext";
-import { todayApi, type TodaySummary } from "@/services/api";
+import { todayApi } from "@/services/api";
+import type { TodaySummary } from "@/types";
 
 /* ========== 能力芯片（输入框上方始终显示） ========== */
 

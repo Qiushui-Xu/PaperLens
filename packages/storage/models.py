@@ -1,6 +1,6 @@
 """
 SQLAlchemy ORM 模型定义
-@author Bamzc
+@author Color2333
 """
 
 from datetime import UTC, date, datetime
@@ -195,6 +195,7 @@ class TopicSubscription(Base):
     enabled: Mapped[bool] = mapped_column(nullable=False, default=True)
     max_results_per_run: Mapped[int] = mapped_column(nullable=False, default=20)
     retry_limit: Mapped[int] = mapped_column(nullable=False, default=2)
+    schedule_frequency: Mapped[str] = mapped_column(String(32), nullable=False, default="daily")
     schedule_time_utc: Mapped[int] = mapped_column(nullable=False, default=21)
     enable_date_filter: Mapped[bool] = mapped_column(nullable=False, default=False)  # 是否启用日期过滤
     date_filter_days: Mapped[int] = mapped_column(nullable=False, default=7)  # 日期范围（最近 N 天）
@@ -306,6 +307,26 @@ class AgentMessage(Base):
         DateTime, default=_utcnow, nullable=False, index=True
     )
 
+
+class AgentPendingAction(Base):
+    """Agent 待确认操作 - 持久化存储"""
+
+    __tablename__ = "agent_pending_actions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    conversation_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("agent_conversations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    tool_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    tool_args: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    tool_call_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    conversation_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_utcnow, nullable=False, index=True
+    )
 
     paper_id: Mapped[str | None] = mapped_column(
         String(36),

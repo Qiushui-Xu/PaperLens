@@ -1,6 +1,6 @@
 /**
  * 论文收集与订阅管理（重构版：手动抓取 + 丰富结果展示）
- * @author Bamzc
+ * @author Color2333
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -32,10 +32,10 @@ import {
   Zap,
   Play,
 } from "lucide-react";
-import { ingestApi, topicApi, type TopicFetchResult } from "@/services/api";
+import { ingestApi, topicApi } from "@/services/api";
 import { useToast } from "@/contexts/ToastContext";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import type { Topic, TopicCreate, TopicUpdate, ScheduleFrequency, KeywordSuggestion, IngestPaper } from "@/types";
+import type { Topic, TopicCreate, TopicUpdate, ScheduleFrequency, KeywordSuggestion, IngestPaper, TopicFetchResult } from "@/types";
 
 type SortBy = "submittedDate" | "relevance" | "lastUpdatedDate";
 

@@ -1,7 +1,7 @@
 /**
  * Topics - 主题管理
  * 覆盖 API: GET/POST/PATCH/DELETE /topics
- * @author Bamzc
+ * @author Color2333
  */
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardHeader, Button, Badge, Input, Modal, Empty, Spinner } from "@/components/ui";
@@ -223,7 +223,6 @@ function TopicModal({
   });
   const [dateFilterEnabled, setDateFilterEnabled] = useState(false);
   const [dateFilterDays, setDateFilterDays] = useState(7);
-  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -237,12 +236,10 @@ function TopicModal({
       });
       setDateFilterEnabled(topic.enable_date_filter ?? false);
       setDateFilterDays(topic.date_filter_days ?? 7);
-      });
     } else {
       setForm({ name: "", query: "", enabled: true, max_results_per_run: 20, retry_limit: 2 });
       setDateFilterEnabled(false);
       setDateFilterDays(7);
-      setForm({ name: "", query: "", enabled: true, max_results_per_run: 20, retry_limit: 2 });
     }
   }, [topic, open]);
 
@@ -257,18 +254,12 @@ function TopicModal({
           max_results_per_run: form.max_results_per_run,
           retry_limit: form.retry_limit,
         });
-        await topicApi.update(topic!.id, {
-          enable_date_filter: dateFilterEnabled,
-          date_filter_days: dateFilterDays,
-        });
-        });
       } else {
         await topicApi.create({
           ...form,
           enable_date_filter: dateFilterEnabled,
           date_filter_days: dateFilterDays,
         });
-        await topicApi.create(form);
       }
       onSaved();
       onClose();
@@ -330,7 +321,7 @@ function TopicModal({
                 max="365"
                 value={dateFilterDays}
                 onChange={(e) => setDateFilterDays(parseInt(e.target.value) || 7)}
-                help="例如：7=最近 7 天，30=最近 30 天"
+                placeholder="7=最近7天，30=最近30天"
               />
             </div>
           )}

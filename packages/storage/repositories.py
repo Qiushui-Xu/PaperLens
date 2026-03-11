@@ -1,11 +1,10 @@
 """
 数据仓储层
-@author Bamzc
+@author Color2333
 """
 
 from __future__ import annotations
 
-import math
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
@@ -18,6 +17,7 @@ from packages.storage.models import (
     ActionPaper,
     AgentConversation,
     AgentMessage,
+    AgentPendingAction,
     AnalysisReport,
     Citation,
     CollectionAction,
@@ -795,7 +795,8 @@ class TopicRepository:
             found.retry_limit = max(retry_limit, 0)
             found.schedule_frequency = schedule_frequency
             found.schedule_time_utc = max(0, min(23, schedule_time_utc))
-            found.updated_at = datetime.now(UTC)
+            found.enable_date_filter = enable_date_filter
+            found.date_filter_days = max(1, date_filter_days)
             found.updated_at = datetime.now(UTC)
             self.session.flush()
             return found
@@ -808,7 +809,7 @@ class TopicRepository:
             schedule_frequency=schedule_frequency,
             schedule_time_utc=max(0, min(23, schedule_time_utc)),
             enable_date_filter=enable_date_filter,
-
+            date_filter_days=max(1, date_filter_days),
         )
         self.session.add(topic)
         self.session.flush()
@@ -1293,5 +1294,57 @@ class DailyReportConfigRepository:
         for key, value in kwargs.items():
             if hasattr(config, key):
                 setattr(config, key, value)
+        return config
+
+
+class AgentPendingActionRepository:
+    """Agent 待确认操作持久化 Repository"""
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def create(
+        self,
+        action_id: str,
+        tool_name: str,
+        tool_args: dict,
+        tool_call_id: str | None = None,
+        conversation_id: str | None = None,
+        conversation_state: dict | None = None,
+    ) -> AgentPendingAction:
+        """创建待确认操作"""
+        action = AgentPendingAction(
+            id=action_id,
+            tool_name=tool_name,
+            tool_args=tool_args,
+            tool_call_id=tool_call_id,
+            conversation_id=conversation_id,
+            conversation_state=conversation_state,
+        )
+        self.session.add(action)
         self.session.flush()
+        return action
+
+    def get_by_id(self, action_id: str) -> AgentPendingAction | None:
+        """根据 ID 获取待确认操作"""
+        return self.session.get(AgentPendingAction, action_id)
+
+    def delete(self, action_id: str) -> bool:
+        """删除待确认操作"""
+        action = self.get_by_id(action_id)
+        if action:
+            self.session.delete(action)
+            self.session.flush()
+            return True
+        return False
+
+    def cleanup_expired(self, ttl_seconds: int = 1800) -> int:
+        """清理过期的待确认操作"""
+        cutoff = datetime.now(UTC) - timedelta(seconds=ttl_seconds)
+        q = delete(AgentPendingAction).where(AgentPendingAction.created_at < cutoff)
+        result = self.session.execute(q)
+        self.session.flush()
+        return result.rowcount
+
+
         return config

@@ -1,11 +1,11 @@
 /**
  * 领域洞察面板 — 一键查询: 时间线 + 演化 + 质量 + 研究空白
- * @author Bamzc
+ * @author Color2333
  */
 import { useState, useCallback } from "react";
 import { Button, Badge } from "@/components/ui";
 import { useToast } from "@/contexts/ToastContext";
-import { graphApi, topicApi, todayApi, type TodaySummary } from "@/services/api";
+import { graphApi, topicApi, todayApi } from "@/services/api";
 import {
   Search, Network, Clock, BarChart3, TrendingUp, Star,
   ArrowDown, ArrowRight, Layers, Lightbulb, HelpCircle,
@@ -13,7 +13,7 @@ import {
   ChevronDown, ChevronRight, SlidersHorizontal, Compass, RotateCw,
 } from "lucide-react";
 import type {
-  Topic, TimelineResponse, GraphQuality, EvolutionResponse, ResearchGapsResponse,
+  Topic, TimelineResponse, GraphQuality, EvolutionResponse, ResearchGapsResponse, TodaySummary,
 } from "@/types";
 import { Section, PaperLink, NetStat, StrengthBadge, GapCard, LoadingHint } from "./shared";
 import { useEffect } from "react";

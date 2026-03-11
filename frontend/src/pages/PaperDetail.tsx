@@ -1,6 +1,6 @@
 /**
  * Paper Detail - 论文详情（重构版：进度面板 + Tab 化报告 + 统一布局）
- * @author Bamzc
+ * @author Color2333
  */
 import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -12,8 +12,8 @@ import { PaperDetailSkeleton } from "@/components/Skeleton";
 const Markdown = lazy(() => import("@/components/Markdown"));
 const PdfReader = lazy(() => import("@/components/PdfReader"));
 import { useToast } from "@/contexts/ToastContext";
-import { paperApi, pipelineApi, type FigureAnalysisItem } from "@/services/api";
-import type { Paper, SkimReport, DeepDiveReport, ReasoningChainResult } from "@/types";
+import { paperApi, pipelineApi } from "@/services/api";
+import type { Paper, SkimReport, DeepDiveReport, ReasoningChainResult, FigureAnalysisItem } from "@/types";
 import {
   ArrowLeft, ExternalLink, Eye, BookOpen, Cpu, Star, AlertTriangle,
   CheckCircle2, Lightbulb, FlaskConical, Microscope, Shield, Sparkles,

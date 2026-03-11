@@ -1,13 +1,13 @@
 """
 Agent 工具注册表和执行函数
-@author Bamzc
+@author Color2333
 """
 from __future__ import annotations
 
 import logging
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from packages.ai.brief_service import DailyBriefService
 from packages.ai.graph_service import GraphService

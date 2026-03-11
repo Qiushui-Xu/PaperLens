@@ -1,6 +1,6 @@
 """
 数据库引擎和会话管理
-@author Bamzc
+@author Color2333
 """
 
 from __future__ import annotations
@@ -119,6 +119,20 @@ def run_migrations() -> None:
             "schedule_time_utc",
             "INTEGER",
             "21",
+        )
+        _safe_add_column(
+            conn,
+            "topic_subscriptions",
+            "enable_date_filter",
+            "BOOLEAN",
+            "0",
+        )
+        _safe_add_column(
+            conn,
+            "topic_subscriptions",
+            "date_filter_days",
+            "INTEGER",
+            "7",
         )
         _safe_add_column(conn, "papers", "favorited", "BOOLEAN", "0")
         # 关键列索引加速 ORDER BY / WHERE 查询

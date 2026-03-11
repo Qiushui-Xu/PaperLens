@@ -14,10 +14,8 @@ import { Modal } from "@/components/ui/Modal";
 import {
   emailConfigApi,
   dailyReportApi,
-  type EmailConfig,
-  type EmailConfigForm,
-  type DailyReportConfig,
 } from "@/services/api";
+import type { EmailConfig, EmailConfigForm, DailyReportConfig } from "@/types";
 import { getErrorMessage } from "@/lib/errorHandler";
 import {
   Mail,
