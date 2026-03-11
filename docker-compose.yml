@@ -27,7 +27,6 @@ services:
       - pm_pip_cache:/.pip-cache
     env_file:
       - ./.env
-      - ./deploy/.env
     environment:
       - APP_ENV=production
       - API_HOST=0.0.0.0
@@ -65,7 +64,6 @@ services:
       - pm_pip_cache:/.pip-cache
     env_file:
       - ./.env
-      - ./deploy/.env
     environment:
       - APP_ENV=production
       - SITE_URL=https://pm.vibingu.cn
