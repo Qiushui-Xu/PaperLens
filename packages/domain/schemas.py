@@ -113,8 +113,8 @@ class AgentChatRequest(BaseModel):
     """Agent 对话请求"""
 
     messages: list[AgentMessage]
+    conversation_id: str | None = None
     confirmed_action_id: str | None = None
-
 
 # ---------- API Request Bodies ----------
 

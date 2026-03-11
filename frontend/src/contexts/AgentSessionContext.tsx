@@ -468,9 +468,10 @@ export function AgentSessionProvider({ children }: { children: React.ReactNode }
         throw new Error("blocked");
       }
       cancelStream();
-      if (!activeIdRef.current) {
+      let convId = activeIdRef.current;
+      if (!convId) {
         justCreatedRef.current = true;
-        createConversation();
+        convId = createConversation(); // 返回新创建的 ID
       }
       setLoading(true);
       setItems((prev) => [...prev, { id: `user_${uid()}`, type: "user" as const, content: text.trim(), timestamp: new Date() }]);
@@ -502,7 +503,8 @@ export function AgentSessionProvider({ children }: { children: React.ReactNode }
       try {
         const ac = new AbortController();
         abortRef.current = ac;
-        const resp = await agentApi.chat(msgs);
+        // 传递 conversationId 给后端
+        const resp = await agentApi.chat(msgs, convId);
         if (!resp.body) {
           setItems((p) => [...p, { id: `e_${uid()}`, type: "error" as const, content: "无响应流", timestamp: new Date() }]);
           setLoading(false);

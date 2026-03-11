@@ -308,6 +308,26 @@ class AgentMessage(Base):
     )
 
 
+class AgentPendingAction(Base):
+    """Agent 待确认操作 - 持久化存储"""
+
+    __tablename__ = "agent_pending_actions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    conversation_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("agent_conversations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    tool_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    tool_args: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    tool_call_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    conversation_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_utcnow, nullable=False, index=True
+    )
+
     paper_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("papers.id", ondelete="SET NULL"),

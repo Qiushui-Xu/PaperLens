@@ -414,13 +414,14 @@ async function fetchSSE(url: string, init?: RequestInit): Promise<Response> {
 }
 
 export const agentApi = {
-  chat: async (messages: AgentMessage[], confirmedActionId?: string): Promise<Response> => {
-    const url = `${getApiBase().replace(/\/+$/, "")}/agent/chat`;
+  chat: async (messages: AgentMessage[], conversationId?: string, confirmedActionId?: string): Promise<Response> => {
+    const url = `${getApiBase().replace(/\/\/+$/, "")}/agent/chat`;
     return fetchSSE(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         messages,
+        conversation_id: conversationId || null,
         confirmed_action_id: confirmedActionId || null,
       }),
     });

@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterator
+from uuid import uuid4
+import logging
 import threading
 import time
 from collections.abc import Iterator
@@ -20,7 +23,7 @@ from packages.ai.agent_tools import (
 )
 from packages.integrations.llm_client import LLMClient, StreamEvent
 from packages.storage.db import session_scope
-from packages.storage.repositories import PromptTraceRepository
+from packages.storage.repositories import AgentPendingActionRepository, PromptTraceRepository
 
 logger = logging.getLogger(__name__)
 
@@ -98,25 +101,19 @@ SYSTEM_PROMPT = """\
 
 _CONFIRM_TOOLS = {t.name for t in TOOL_REGISTRY if t.requires_confirm}
 
-# 待确认操作（含对话上下文，用于恢复执行）
-_pending_actions: dict[str, dict] = {}
-_pending_lock = threading.Lock()
 _ACTION_TTL = 1800  # 30 分钟过期
 
 
 def _cleanup_expired_actions():
-    """清理过期的 pending actions"""
-    cutoff = time.time() - _ACTION_TTL
-    with _pending_lock:
-        expired = [
-            k for k, v in _pending_actions.items()
-            if v.get("created_at", 0) < cutoff
-        ]
-        for k in expired:
-            del _pending_actions[k]
-        if expired:
-            logger.info("清理 %d 个过期 pending_actions", len(expired))
-
+    """清理过期的 pending actions（数据库）"""
+    try:
+        with session_scope() as session:
+            repo = AgentPendingActionRepository(session)
+            deleted = repo.cleanup_expired(_ACTION_TTL)
+            if deleted > 0:
+                logger.info("清理 %d 个过期 pending_actions", deleted)
+    except Exception as exc:
+        logger.warning("清理过期 pending_actions 失败: %s", exc)
 
 def _record_agent_usage(
     provider: str, model: str,
@@ -373,15 +370,20 @@ def _llm_loop(
                 "确认操作挂起: %s [%s] args=%s",
                 action_id, tc.tool_name, args,
             )
-            with _pending_lock:
-                _cleanup_expired_actions()
-                _pending_actions[action_id] = {
-                    "tool": tc.tool_name,
-                    "args": args,
-                    "tool_call_id": tc.tool_call_id,
-                    "conversation": conversation,
-                    "created_at": time.time(),
-                }
+            # 持久化到数据库
+            _cleanup_expired_actions()
+            try:
+                with session_scope() as session:
+                    repo = AgentPendingActionRepository(session)
+                    repo.create(
+                        action_id=action_id,
+                        tool_name=tc.tool_name,
+                        tool_args=args,
+                        tool_call_id=tc.tool_call_id,
+                        conversation_state={"conversation": conversation},
+                    )
+            except Exception as exc:
+                logger.warning("存储 pending_action 失败: %s", exc)
             desc = _describe_action(tc.tool_name, args)
             yield _make_sse("action_confirm", {
                 "id": action_id,
@@ -407,8 +409,23 @@ def stream_chat(
 
     # 处理确认操作
     if confirmed_action_id:
-        with _pending_lock:
-            action = _pending_actions.pop(confirmed_action_id, None)
+        # 从数据库读取并删除
+        action = None
+        try:
+            with session_scope() as session:
+                repo = AgentPendingActionRepository(session)
+                action_record = repo.get_by_id(confirmed_action_id)
+                if action_record:
+                    action = {
+                        "tool": action_record.tool_name,
+                        "args": action_record.tool_args,
+                        "tool_call_id": action_record.tool_call_id,
+                        "conversation": (action_record.conversation_state or {}).get("conversation", []),
+                    }
+                    repo.delete(confirmed_action_id)
+        except Exception as exc:
+            logger.warning("读取 pending_action 失败: %s", exc)
+
         if not action:
             yield _make_sse(
                 "error",
@@ -463,8 +480,24 @@ def stream_chat(
 def confirm_action(action_id: str) -> Iterator[str]:
     """确认执行挂起的操作并继续对话"""
     logger.info("用户确认操作: %s", action_id)
-    with _pending_lock:
-        action = _pending_actions.pop(action_id, None)
+
+    # 从数据库读取并删除
+    action = None
+    try:
+        with session_scope() as session:
+            repo = AgentPendingActionRepository(session)
+            action_record = repo.get_by_id(action_id)
+            if action_record:
+                action = {
+                    "tool": action_record.tool_name,
+                    "args": action_record.tool_args,
+                    "tool_call_id": action_record.tool_call_id,
+                    "conversation": (action_record.conversation_state or {}).get("conversation", []),
+                }
+                repo.delete(action_id)
+    except Exception as exc:
+        logger.warning("读取 pending_action 失败: %s", exc)
+
     if not action:
         yield _make_sse(
             "error",
@@ -490,12 +523,27 @@ def confirm_action(action_id: str) -> Iterator[str]:
 
     yield _make_sse("done", {})
 
-
 def reject_action(action_id: str) -> Iterator[str]:
     """拒绝挂起的操作并让 LLM 给出替代建议"""
     logger.info("用户拒绝操作: %s", action_id)
-    with _pending_lock:
-        action = _pending_actions.pop(action_id, None)
+
+    # 从数据库读取并删除
+    action = None
+    try:
+        with session_scope() as session:
+            repo = AgentPendingActionRepository(session)
+            action_record = repo.get_by_id(action_id)
+            if action_record:
+                action = {
+                    "tool": action_record.tool_name,
+                    "args": action_record.tool_args,
+                    "tool_call_id": action_record.tool_call_id,
+                    "conversation": (action_record.conversation_state or {}).get("conversation", []),
+                }
+                repo.delete(action_id)
+    except Exception as exc:
+        logger.warning("读取 pending_action 失败: %s", exc)
+
     yield _make_sse("action_result", {
         "id": action_id,
         "success": False,
@@ -520,7 +568,6 @@ def reject_action(action_id: str) -> Iterator[str]:
         yield from _llm_loop(conversation, llm, tools)
 
     yield _make_sse("done", {})
-
 
 def _describe_action(tool_name: str, args: dict) -> str:
     """生成操作描述"""
