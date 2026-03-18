@@ -1,7 +1,7 @@
 [project]
-name = "papermind"
+name = "paperlens"
 version = "0.1.0"
-description = "PaperMind research pipeline backend"
+description = "Your personal research lens — AI-powered personalized paper tracking & summarization"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

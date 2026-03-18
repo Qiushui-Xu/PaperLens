@@ -116,6 +116,7 @@ def paper_list_response(papers: list, repo: PaperRepository) -> dict:
                 "pdf_path": p.pdf_path,
                 "has_embedding": p.embedding is not None,
                 "favorited": getattr(p, "favorited", False),
+                "user_viewed": getattr(p, "user_viewed", False),
                 "categories": (p.metadata_json or {}).get("categories", []),
                 "keywords": (p.metadata_json or {}).get("keywords", []),
                 "title_zh": (p.metadata_json or {}).get("title_zh", ""),

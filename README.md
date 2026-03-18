@@ -1,455 +1,357 @@
-<div align="center">
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11+-blue?style=flat-square&logo=python" />
+  <img src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react" />
+  <img src="https://img.shields.io/badge/FastAPI-0.116-009688?style=flat-square&logo=fastapi" />
+  <img src="https://img.shields.io/badge/LLM-GPT%20%7C%20Claude%20%7C%20GLM-blueviolet?style=flat-square" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" />
+</p>
 
-<br/>
+# PaperLens
 
-<img src="https://img.shields.io/badge/PaperMind-AI_Research_Workflow-667eea?style=for-the-badge&labelColor=1a1a2e" alt="PaperMind" height="42"/>
+> Your personal research lens — 根据你的兴趣，自动发现、阅读、总结学术论文。
 
-<br/><br/>
-
-**AI 驱动的学术论文研究工作流平台**
-
-*从「搜索论文」进化为「理解领域」*
-
-<br/>
-
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React_18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![Tailwind](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v3.1-667eea?style=flat-square)](CHANGELOG)
-
-<br/>
-
-<img src="https://img.shields.io/badge/LLM-OpenAI_%7C_Anthropic_%7C_ZhipuAI-blueviolet?style=for-the-badge" alt="LLM Support"/>
-
-<br/><br/>
-
-> 🚀 **让 AI 成为你的研究助理** —— 自动追踪、智能分析、知识图谱、学术写作，一站式搞定！
-
-</div>
+PaperLens 是一个 AI 驱动的个性化学术论文追踪平台。订阅你感兴趣的研究方向，系统自动从 arXiv 抓取最新论文，用 LLM 进行结构化粗读与精读，生成每日简报，并基于你的收藏行为持续发现新的兴趣方向。
 
 ---
 
-## 🚀 快速开始
+## Highlights
 
-### Docker 部署（生产推荐）
+- **兴趣驱动** — 收藏论文后，LLM 自动分析你的偏好，推荐新主题订阅
+- **结构化摘要** — 粗读提取问题/方法/实验/结论，精读解析模型架构/伪代码/消融实验
+- **多源聚合** — arXiv 定时抓取 + HuggingFace 热榜 + 手动导入
+- **知识图谱** — 引用网络、相似度地图、研究前沿、跨主题桥梁
+- **AI 助手** — 多轮对话问答、推理链分析、RAG 检索增强
+- **笔记系统** — 论文高亮 + 自由笔记，按主题自动汇总
+- **每日简报** — 自动生成研究日报，支持邮件推送
+- **成本可控** — 内置成本守卫、每日预算、Token 用量追踪
 
-```bash
-# 1️⃣ 克隆项目
-git clone https://github.com/Color2333/PaperMind.git && cd PaperMind
+---
 
-# 2️⃣ 配置环境变量
-cp .env.example .env
-vim .env  # 编辑配置，至少填写 LLM API Key
+## 架构概览
 
-# 3️⃣ 一键部署
-docker compose up -d --build
-
-# 4️⃣ 访问服务
-# 🌐 前端：http://localhost:3002
-# 📡 后端 API: http://localhost:8002
-# 📚 API 文档：http://localhost:8002/docs
+```
+PaperLens/
+├── apps/
+│   ├── api/              # FastAPI 后端（REST + SSE 流式）
+│   │   └── routers/      # 12 个路由模块，100+ 端点
+│   └── worker/           # APScheduler 定时调度
+├── packages/
+│   ├── ai/               # 24 个 AI 模块：管线、推荐、RAG、Agent...
+│   ├── domain/           # Pydantic 数据模型
+│   ├── integrations/     # arXiv / HuggingFace / Semantic Scholar / LLM
+│   └── storage/          # SQLAlchemy ORM + Repository 层
+├── frontend/             # React 18 + Vite + Tailwind
+├── scripts/              # 种子脚本、开发工具
+└── pyproject.toml
 ```
 
-### 本地开发
+---
+
+## 核心功能
+
+### 1. 个性化主题订阅
+
+自定义 arXiv 搜索语法，系统按计划自动抓取新论文：
+
+```python
+# scripts/seed_topics.py — 示例主题
+TOPICS = [
+    {"name": "Reinforcement Learning", "query": "abs:reinforcement AND abs:learning"},
+    {"name": "LLM Agent",              "query": "abs:agent AND (abs:language OR abs:LLM)"},
+    {"name": "World Models",           "query": "abs:world AND abs:model AND (abs:learning OR abs:planning)"},
+]
+```
+
+也可在前端 Topics 页面直接创建，或让 AI 根据你的自然语言描述自动生成 arXiv 查询语法。
+
+### 2. 结构化论文分析
+
+**粗读 (Skim)**：问题定义 / 方法概述 / 核心贡献 / 实验基准 / 结果总结 / 结论
+
+**精读 (Deep Read)**：下载 PDF → MinerU/PyMuPDF 解析 → LLM 提取：
+- 模型架构与关键图示
+- 伪代码 / 算法流程
+- 实验设置与主要结果
+- 消融实验分析
+- 与现有方法对比
+- 局限性与未来方向
+
+### 3. 兴趣发现与推荐
+
+基于收藏论文的个性化推荐闭环：
+
+```
+收藏论文 → LLM 分析兴趣空白 → 推荐新主题 → arXiv 预览搜索 → 一键订阅
+```
+
+- 系统每日自动检测新收藏，有 3+ 篇新收藏时触发分析
+- Dashboard 和论文页侧栏均可查看推荐、手动触发分析
+- 基于 embedding 的相似论文推荐 + 热词趋势检测
+
+### 4. 知识图谱与引用分析
+
+- **引用网络** — Semantic Scholar + OpenAlex 数据构建引用树
+- **相似度地图** — UMAP 降维的论文 embedding 可视化
+- **研究前沿** — 识别高被引新论文和新兴方向
+- **跨主题桥梁** — 发现连接不同主题的关键论文
+- **共被引聚类** — 发现研究社区结构
+
+### 5. AI Agent 对话
+
+内置多工具 Agent，支持：
+- 搜索和收集论文
+- 粗读 / 精读 / 对比分析
+- RAG 检索增强问答
+- 推理链分析
+
+### 6. 笔记与标注
+
+- PDF 阅读时选中文字 → 保存到笔记本（附页码和原文）
+- 为每篇论文写自由笔记（想法、灵感）
+- 按主题聚合所有论文笔记，一目了然
+
+### 7. 每日简报 & 邮件推送
+
+每天自动生成研究简报，包含：新论文概览、推荐阅读、热词趋势。支持 SMTP 邮件推送至指定邮箱。
+
+### 8. 学术写作助手
+
+论文表达润色、AI 翻译、多模态（图片+文字）辅助写作。
+
+---
+
+## 快速开始
+
+### 环境要求
+
+- Python >= 3.11
+- Node.js >= 18（前端）
+- 至少一个 LLM API Key（OpenAI / Anthropic / 智谱）
+
+### 1. 克隆与安装
 
 ```bash
-# 1️⃣ 克隆项目
-git clone https://github.com/Color2333/PaperMind.git && cd PaperMind
+git clone https://github.com/Qiushui-Xu/PaperLens.git && cd PaperLens
 
-# 2️⃣ 一键初始化（推荐）
-python scripts/dev_setup.py
-# 脚本会自动：检查Python版本 → 创建虚拟环境 → 安装依赖 → 复制配置 → 初始化数据库
-
-# 或手动初始化：
+# 创建虚拟环境
 python -m venv .venv && source .venv/bin/activate
+
+# 安装依赖（含 LLM 和 PDF 支持）
 pip install -e ".[llm,pdf]"
-cp .env.example .env
-vim .env  # 编辑 .env 填入 LLM API Key
-python scripts/local_bootstrap.py
-
-# 3️⃣ 启动后端
-uvicorn apps.api.main:app --reload --port 8000
-
-# 4️⃣ 启动前端
-cd frontend && npm install && npm run dev
-# 🌐 打开 http://localhost:5173
 ```
 
-### 站点认证（可选）
+或使用一键脚本：
 
 ```bash
-# 在 .env 中设置密码即可启用
-AUTH_PASSWORD=your_password_here
-AUTH_SECRET_KEY=your_random_secret_key
+python scripts/dev_setup.py
 ```
 
----
+### 2. 配置
 
-## 🎯 这是什么？
-
-PaperMind 是一个**面向科研工作者的 AI 增强平台**，帮你：
-
-| 😫 以前 | 😎 现在 |
-|:--------|:--------|
-| 每天手动刷 arXiv，怕错过重要论文 | 自动订阅主题，新论文推送到邮箱 |
-| 读论文从摘要开始，不知道值不值得精读 | AI 粗读打分，快速筛选高价值论文 |
-| 想了解领域发展，不知道从哪篇读起 | 知识图谱可视化，一眼看清引用脉络 |
-| 写论文卡壳，不知道怎么表达 | 13 种写作工具，润色/翻译/去 AI 味 |
-| 文献综述耗时耗力，整理几百篇头大 | Wiki 自动生成，一键产出领域综述 |
-
----
-
-## ✨ 核心能力
-
-<table>
-<tr>
-<td width="50%">
-
-### 🤖 AI Agent 对话
-
-你的智能研究助理，**自然语言交互**搞定一切：
-
-- 💬 **SSE 流式对话** —— Claude 风格，实时响应
-- 🔧 **22+ 工具链** —— 搜索/入库/分析/生成/写作自动调度
-- ✅ **用户确认机制** —— 重要操作等你点头
-- 📜 **对话历史持久化** —— 切页面不丢上下文
-- 🎯 **AI 关键词建议** —— 描述研究方向 → 自动生成搜索词
-
-</td>
-<td width="50%">
-
-### 📄 智能论文管理
-
-从收录到精读，**全流程自动化**：
-
-- 🔄 **ArXiv 增量抓取** —— 每个主题独立频率/时间
-- 🚫 **论文去重检测** —— 避免重复处理浪费 token
-- 📦 **递归抓取** —— 自动延伸更早期论文
-- ⚡ **并行处理** —— 粗读/精读/嵌入三管齐下
-- 💾 **按需下载 PDF** —— 入库不下载，精读才拉取
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🔍 RAG 知识问答
-
-向你的论文库**提问**，AI 跨论文综合分析：
-
-- 🎯 **双路召回** —— 向量检索 + 全文检索
-- 📚 **跨论文分析** —— 综合多篇论文回答问题
-- 📝 **Artifact 卡片** —— 答案自动生成可复用内容
-- 🔗 **引用追溯** —— 每句话都能找到出处
-
-</td>
-<td width="50%">
-
-### 🕸️ 引用图谱
-
-**可视化**你的研究领域：
-
-- 🌳 **引用树** —— 单篇论文引用网络
-- 🌐 **主题图谱** —— 跨主题引用关系
-- 🌉 **桥接论文** —— 发现跨领域的核心工作
-- 🔬 **研究前沿** —— 高被引 + 高引用的热点
-- 📊 **研究空白** —— 发现 citation sparse region
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 📚 Wiki 自动生成
-
-**一键生成**领域综述：
-
-- 📖 **主题 Wiki** —— 输入关键词，输出完整综述
-- 📄 **论文 Wiki** —— 单篇论文深度解读
-- 📊 **实时进度条** —— 异步生成，自动刷新
-- 📜 **历史回溯** —— 所有生成内容可查看
-
-</td>
-<td width="50%">
-
-### ✍️ 学术写作助手
-
-**13 种写作工具**，来自顶尖研究机构：
-
-- 🌏 **中转英 / 英转中** —— 学术级翻译
-- ✨ **润色（中/英）** —— 更地道的学术表达
-- 🤖 **去 AI 味** —— 降低 AI 检测率
-- 📊 **图表推荐 / 标题生成** —— 实验数据可视化建议
-- 🧪 **Reviewer 视角** —— 模拟审稿人批评
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 📖 沉浸式 PDF 阅读器
-
-**专注阅读**，AI 随叫随到：
-
-- 📜 **连续滚动** —— IntersectionObserver 页码追踪
-- 🔍 **缩放/全屏/跳转** —— 键盘快捷键支持
-- 🌐 **arXiv 在线代理** —— 无本地 PDF 也能读
-- ✨ **选中即问** —— AI 解释/翻译/总结
-- 📝 **侧边 AI 栏** —— Markdown + LaTeX 渲染
-
-</td>
-<td width="50%">
-
-### 🔐 站点安全认证
-
-**保护你的研究资产**：
-
-- 🔑 **站点密码** —— 简单可靠，适合个人/小团队
-- 🎫 **JWT Token** —— 7 天有效期，自动续期
-- 🛡️ **全站保护** —— 所有 API 都需要认证
-- 📄 **PDF Token** —— 文件访问也安全
-
-</td>
-</tr>
-</table>
-
----
-
-## 📸 界面预览
-
-<table>
-<tr>
-<td align="center" width="50%">
-<strong>🤖 AI Agent 对话主页</strong><br/><br/>
-<img src="scripts/screenshots/full/01-01-agent-home.png" alt="Agent Home" width="100%"/>
-<br/><sub>智能对话 · 论文推荐 · 热点追踪</sub>
-</td>
-<td align="center" width="50%">
-<strong>📄 论文库管理</strong><br/><br/>
-<img src="scripts/screenshots/full/03-03-papers-list.png" alt="Papers List" width="100%"/>
-<br/><sub>主题分类 · 日期分组 · 批量操作</sub>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%">
-<strong>📖 沉浸式 PDF 阅读器</strong><br/><br/>
-<img src="scripts/screenshots/full/21-pdf-reader.png" alt="PDF Reader" width="100%"/>
-<br/><sub>连续滚动 · AI 问答 · arXiv 代理</sub>
-</td>
-<td align="center" width="50%">
-<strong>🕸️ 知识图谱</strong><br/><br/>
-<img src="scripts/screenshots/full/08-09-graph.png" alt="Graph" width="100%"/>
-<br/><sub>引用树 · 研究前沿 · 共引聚类</sub>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%">
-<strong>📚 Wiki 自动生成</strong><br/><br/>
-<img src="scripts/screenshots/full/11-12-wiki.png" alt="Wiki" width="100%"/>
-<br/><sub>主题综述 · 论文解读 · 历史回溯</sub>
-</td>
-<td align="center" width="50%">
-<strong>🌙 暗色主题</strong><br/><br/>
-<img src="scripts/screenshots/full/16-17-dark-theme.png" alt="Dark Theme" width="100%"/>
-<br/><sub>全局暗色 · 护眼阅读</sub>
-</td>
-</tr>
-</table>
-
----
-
-## 🏗️ 架构总览
-
+```bash
+cp .env.example .env
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend (React 18)                      │
-│  Agent │ Papers │ Wiki │ Graph │ Brief │ Collect │ Writing  │
-│         路由懒加载 · Vite 代码分割 · SSE 跨页保活            │
-└─────────────────────────┬───────────────────────────────────┘
-                          │ REST + SSE (JWT Auth)
-┌─────────────────────────┴───────────────────────────────────┐
-│                      FastAPI Backend                         │
-├─────────────┬─────────────┬─────────────┬───────────────────┤
-│   Agent     │   Pipeline  │    RAG      │  Graph / Wiki /   │
-│   Service   │   Engine    │   Service   │  Brief / Write    │
-├─────────────┴─────────────┴─────────────┴───────────────────┤
-│         Global TaskTracker (异步任务 + 实时进度)             │
-├─────────────────────────────────────────────────────────────┤
-│           Unified LLM Client (连接复用 + TTL 缓存)           │
-│            OpenAI  │  Anthropic  │  ZhipuAI                 │
-├─────────────────────────────────────────────────────────────┤
-│   SQLite (WAL)  │  ArXiv API  │  Semantic Scholar API       │
-└─────────────────────────────────────────────────────────────┘
-                           │
-              ┌────────────┴────────────┐
-              │   APScheduler Worker    │
-              │   按主题独立调度         │
-              │   每日简报 / 每周图谱    │
-              └─────────────────────────┘
-```
----
-## ⚙️ 环境变量
+
+编辑 `.env`，**至少填写一个 LLM API Key**：
+
+| 变量 | 说明 | 示例 |
+|:-----|:-----|:-----|
+| `LLM_PROVIDER` | LLM 提供商 | `openai` / `anthropic` / `zhipu` |
+| `OPENAI_API_KEY` | OpenAI Key | `sk-proj-...` |
+| `ZHIPU_API_KEY` | 智谱 Key（推荐，经济实惠） | — |
+| `DATABASE_URL` | 数据库 | `sqlite:///./data/papermind.db` |
+
+<details>
+<summary>完整环境变量参考</summary>
 
 | 变量 | 说明 | 默认值 |
 |:-----|:-----|:------:|
-| `LLM_PROVIDER` | LLM 提供商 (openai/anthropic/zhipu) | `zhipu` |
-| `ZHIPU_API_KEY` | 智谱 API Key | — |
 | `LLM_MODEL_SKIM` | 粗读模型 | `glm-4.7` |
 | `LLM_MODEL_DEEP` | 精读模型 | `glm-4.7` |
 | `LLM_MODEL_VISION` | 视觉模型 | `glm-4.6v` |
-| `SITE_URL` | 生产域名 | `http://localhost:5173` |
-| `AUTH_PASSWORD` | 站点密码（留空禁用认证） | — |
-| `AUTH_SECRET_KEY` | JWT 密钥 | — |
+| `EMBEDDING_MODEL` | 嵌入模型 | `embedding-3` |
 | `COST_GUARD_ENABLED` | 成本守卫 | `true` |
 | `DAILY_BUDGET_USD` | 每日预算 | `2.0` |
-
-> 完整配置见 `.env.example`
-
----
-
-## 📡 API 速览
-
-<details>
-<summary><strong>🔐 认证</strong></summary>
-
-| 方法 | 路径 | 说明 |
-|:----:|:-----|:-----|
-| POST | `/auth/login` | 登录获取 JWT Token |
-| GET | `/auth/status` | 查询认证状态 |
+| `AUTH_PASSWORD` | 站点密码（空=公开） | — |
+| `DAILY_CRON` | 简报时间 (UTC) | `0 4 * * *` |
+| `DEFAULT_TOPIC_TIME_UTC` | 默认抓取时间 | `2` |
+| `IDLE_PROCESSOR_ENABLED` | 闲时自动处理 | `true` |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | 邮件推送 | — |
 
 </details>
 
-<details>
-<summary><strong>🤖 AI Agent</strong></summary>
-
-| 方法 | 路径 | 说明 |
-|:----:|:-----|:-----|
-| POST | `/agent/chat` | Agent 对话（SSE 流式） |
-| POST | `/agent/confirm/{id}` | 确认工具执行 |
-| POST | `/agent/reject/{id}` | 拒绝工具执行 |
-
-</details>
-
-<details>
-<summary><strong>📄 论文管理</strong></summary>
-
-| 方法 | 路径 | 说明 |
-|:----:|:-----|:-----|
-| GET | `/papers/latest` | 论文列表（分页） |
-| GET | `/papers/{id}` | 论文详情 |
-| GET | `/papers/{id}/pdf` | PDF 文件流 |
-| POST | `/pipelines/skim/{id}` | 粗读 |
-| POST | `/pipelines/deep/{id}` | 精读 |
-
-</details>
-
-<details>
-<summary><strong>🕸️ 知识图谱</strong></summary>
-
-| 方法 | 路径 | 说明 |
-|:----:|:-----|:-----|
-| GET | `/graph/citation-tree/{id}` | 引文树 |
-| GET | `/graph/overview` | 全局概览 |
-| GET | `/graph/bridges` | 桥接论文 |
-| GET | `/graph/frontier` | 研究前沿 |
-
-</details>
-
----
-
-## ⚡ 性能优化
-
-| 类别 | 优化策略 |
-|------|----------|
-| **前端** | 路由懒加载 · `useMemo`/`useCallback` · Vite chunk 分割 |
-| **SSE** | RAF 批量 flush · 跨页面保活 |
-| **LLM** | 连接复用 · 30s TTL 缓存 · 120s 超时 |
-| **数据库** | SQLite WAL · 64MB cache · 关键索引 |
-| **论文处理** | embed ∥ skim 并行 · 3 篇同时处理 |
-| **成本** | 去重检测 · 全链路 token 追踪 |
-
----
-
-## 📋 更新日志
-
-### v3.1 (2026-03-01) — 安全认证 + 稳定性增强
-
-**新功能**
-- 🔐 **站点密码认证** —— JWT Token 保护所有 API，适合公开部署
-- 📄 **PDF Token 认证** —— 支持 query param token，文件访问也安全
-- 🔄 **SSE 认证** —— Agent 对话等 SSE 请求携带认证
-
-**Bug 修复**
-- 修复 `getApiBase()` 缺失闭合导致 TypeScript 编译失败
-- 恢复 `GZipMiddleware` 响应压缩
-- 恢复 `logging_setup` 统一日志格式
-
-### v3.0 (2026-02-28) — 稳定性全面升级
-
-**新功能**
-- Agent 对话历史完整持久化
-- PDF arXiv 在线代理
-- 论文去重检测
-- 全局任务追踪系统
-
-**Bug 修复**
-- 修复 Wiki 生成失败、Agent 对话历史报错等 12+ 问题
-- 修复 nginx 配置导致的前端容器 crash
-- 修复 Semantic Scholar API 限速重试
-
-<details>
-<summary><strong>查看历史版本</strong></summary>
-
-### v2.8 — 后端重构 + Agent 智能化
-### v2.7 — 多源引用 + 相似度地图
-### v2.5 — 知识图谱可视化
-### v2.0 — Agent 对话系统
-### v1.0 — 基础论文管理
-
-</details>
-
----
-
-## 🔧 开发
+### 3. 初始化数据库
 
 ```bash
-# 后端 lint
-python -m ruff check .
+python scripts/local_bootstrap.py
+```
 
-# 前端类型检查
-cd frontend && npx tsc --noEmit
+### 4. 种子主题
 
-# 数据库迁移
-cd infra && alembic revision --autogenerate -m "描述"
-alembic upgrade head
+```bash
+python scripts/seed_topics.py
+```
+
+编辑脚本中的 `TOPICS` 列表来定义你的研究方向（upsert 逻辑，可反复运行）。
+
+### 5. 启动
+
+```bash
+# 终端 1：API 服务
+uvicorn apps.api.main:app --reload --port 8000
+
+# 终端 2：Worker 调度器
+python -m apps.worker.main
+
+# 终端 3：前端（可选）
+cd frontend && npm install && npm run dev
+```
+
+- API 文档：http://localhost:8000/docs
+- 前端：http://localhost:5173
+
+### Docker 部署
+
+```bash
+cp .env.example .env   # 编辑填入 API Key
+docker compose up -d --build
+# 前端: http://localhost:3002 | API: http://localhost:8002
 ```
 
 ---
 
-## 🙏 致谢
+## 调度时间表
 
-- **[awesome-ai-research-writing](https://github.com/Leey21/awesome-ai-research-writing)** — 写作助手 Prompt 模板来源
-- **[ArXiv](https://arxiv.org)** — 开放论文平台
-- **[Semantic Scholar](https://www.semanticscholar.org)** — 引用数据来源
+Worker 自动执行以下定时任务（UTC 时间）：
+
+| 任务 | 时间 (UTC) | 说明 |
+|:-----|:-----------|:-----|
+| 主题论文抓取 | 每小时整点 | 检查哪些主题该抓取，执行 arXiv 搜索 + HF 热榜 |
+| 每日简报 | 04:00 | 生成研究简报，可选邮件推送 |
+| 兴趣分析 | 06:00 | 检查新收藏，LLM 分析兴趣推荐主题 |
+| 图谱维护 | 周日 22:00 | 引用同步、图谱更新 |
+| 闲时处理 | 全天 | CPU 空闲时自动批量粗读+嵌入未处理论文 |
 
 ---
 
-## 📄 License
+## 技术栈
+
+| 层 | 技术 |
+|:---|:-----|
+| 后端 | FastAPI, SQLAlchemy 2, Pydantic, APScheduler |
+| 前端 | React 18, Vite, Tailwind CSS, Lucide Icons |
+| 数据库 | SQLite（开箱即用）|
+| LLM | OpenAI / Anthropic / 智谱（可切换） |
+| PDF 解析 | MinerU + PyMuPDF |
+| 引用数据 | Semantic Scholar, OpenAlex |
+| 可视化 | react-force-graph-2d, UMAP |
+| 认证 | JWT (python-jose) |
+| 部署 | Docker Compose |
+
+---
+
+## 项目结构
+
+<details>
+<summary>展开查看</summary>
+
+```
+PaperLens/
+├── apps/
+│   ├── api/
+│   │   ├── main.py                 # FastAPI 入口
+│   │   ├── deps.py                 # 依赖注入
+│   │   └── routers/
+│   │       ├── papers.py           # 论文 CRUD、AI 解读、图表分析
+│   │       ├── topics.py           # 主题订阅管理
+│   │       ├── content.py          # Wiki、简报、趋势、兴趣发现
+│   │       ├── graph.py            # 知识图谱、引用分析
+│   │       ├── agent.py            # AI Agent 对话
+│   │       ├── pipelines.py        # 粗读/精读/嵌入管线
+│   │       ├── rag.py              # RAG 问答
+│   │       ├── notes.py            # 笔记系统
+│   │       ├── settings.py         # LLM/邮件设置
+│   │       ├── writing.py          # 写作助手
+│   │       ├── jobs.py             # 手动触发任务
+│   │       └── auth.py             # 认证
+│   └── worker/
+│       └── main.py                 # 定时任务调度
+├── packages/
+│   ├── ai/
+│   │   ├── pipelines.py            # 核心管线（摄入/粗读/精读/嵌入）
+│   │   ├── interest_analyzer.py    # 兴趣发现服务
+│   │   ├── recommendation_service.py  # 推荐 + 趋势
+│   │   ├── rag_service.py          # RAG 检索
+│   │   ├── agent_service.py        # AI Agent
+│   │   ├── graph_service.py        # 图谱分析
+│   │   ├── brief_service.py        # 每日简报
+│   │   ├── reasoning_service.py    # 推理链
+│   │   ├── vision_reader.py        # MinerU PDF 解析
+│   │   ├── writing_service.py      # 写作助手
+│   │   └── ...
+│   ├── integrations/
+│   │   ├── arxiv_client.py         # arXiv API
+│   │   ├── llm_client.py           # 多厂商 LLM 客户端
+│   │   ├── hf_trending_client.py   # HuggingFace 热榜
+│   │   ├── semantic_scholar_client.py
+│   │   └── email_service.py        # 邮件推送
+│   ├── storage/
+│   │   ├── models.py               # 18 个 ORM 模型
+│   │   ├── repositories.py         # Repository 层
+│   │   └── db.py                   # 数据库初始化 + 迁移
+│   └── domain/
+│       └── schemas.py              # Pydantic schemas
+├── frontend/
+│   └── src/
+│       ├── pages/                  # 16 个页面
+│       ├── components/             # UI 组件库
+│       └── services/api.ts         # API 客户端
+├── scripts/
+│   ├── seed_topics.py              # 种子主题
+│   ├── dev_setup.py                # 一键初始化
+│   └── local_bootstrap.py          # 数据库初始化
+└── pyproject.toml
+```
+
+</details>
+
+---
+
+## 常用操作
+
+### 手动触发抓取
+
+```bash
+curl http://localhost:8000/topics                        # 查看所有主题
+curl -X POST http://localhost:8000/topics/<id>/fetch     # 触发指定主题
+```
+
+### 通过 API 管理主题
+
+```bash
+# 创建
+curl -X POST http://localhost:8000/topics \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Diffusion Models", "query": "abs:diffusion AND abs:model"}'
+
+# 更新
+curl -X PATCH http://localhost:8000/topics/<id> \
+  -H "Content-Type: application/json" \
+  -d '{"max_results_per_run": 20}'
+
+# 删除
+curl -X DELETE http://localhost:8000/topics/<id>
+```
+
+### 手动触发兴趣分析
+
+```bash
+curl -X POST http://localhost:8000/interests/analyze     # 启动分析
+curl http://localhost:8000/interests/suggestions          # 查看结果
+```
+
+---
+
+## License
 
 [MIT](LICENSE)
-
----
-
-<div align="center">
-
-**Built with ❤️ by [Color2333](https://github.com/Color2333)**
-
-*PaperMind — 让 AI 帮你读论文，让知识触手可及。*
-
-[![Star](https://img.shields.io/github/stars/Color2333/PaperMind?style=social)](https://github.com/Color2333/PaperMind/stargazers)
-
-</div>

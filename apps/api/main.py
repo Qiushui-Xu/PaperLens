@@ -152,6 +152,7 @@ from apps.api.routers import (  # noqa: E402
     content,
     graph,
     jobs,
+    notes,
     papers,
     pipelines,
     settings as settings_router,
@@ -171,3 +172,4 @@ app.include_router(settings_router.router)
 app.include_router(writing.router)
 app.include_router(jobs.router)
 app.include_router(auth.router)
+app.include_router(notes.router)

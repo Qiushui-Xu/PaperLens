@@ -18,6 +18,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from packages.ai.daily_runner import (
     run_daily_brief,
+    run_hf_trending_ingest,
     run_topic_ingest,
     run_weekly_graph_maintenance,
 )
@@ -100,26 +101,38 @@ def topic_dispatch_job() -> None:
             hour,
             weekday,
         )
-        return
+    else:
+        logger.info(
+            "topic_dispatch: triggering %d topic(s): %s",
+            len(candidates),
+            ", ".join(c["name"] for c in candidates),
+        )
+        for c in candidates:
+            try:
+                result = _retry_with_backoff(
+                    run_topic_ingest, c["id"], max_retries=_RETRY_MAX, base_delay=_RETRY_DELAY
+                )
+                logger.info(
+                    "topic %s done: inserted=%s, processed=%s",
+                    c["name"],
+                    result.get("inserted", 0) if result else 0,
+                    result.get("processed", 0) if result else 0,
+                )
+            except Exception:
+                logger.exception("topic_dispatch failed for %s", c["name"])
 
-    logger.info(
-        "topic_dispatch: triggering %d topic(s): %s",
-        len(candidates),
-        ", ".join(c["name"] for c in candidates),
-    )
-    for c in candidates:
-        try:
-            result = _retry_with_backoff(
-                run_topic_ingest, c["id"], max_retries=_RETRY_MAX, base_delay=_RETRY_DELAY
-            )
-            logger.info(
-                "topic %s done: inserted=%s, processed=%s",
-                c["name"],
-                result.get("inserted", 0) if result else 0,
-                result.get("processed", 0) if result else 0,
-            )
-        except Exception:
-            logger.exception("topic_dispatch failed for %s", c["name"])
+    # HF trending runs independently of topic scheduling
+    try:
+        hf_result = _retry_with_backoff(
+            run_hf_trending_ingest, max_retries=2, base_delay=5.0
+        )
+        logger.info(
+            "HF trending done: new=%s",
+            hf_result.get("new_count", 0) if hf_result else 0,
+        )
+    except Exception:
+        logger.exception("HF trending ingest failed")
+
     _write_heartbeat()
 
 
@@ -145,6 +158,29 @@ def brief_job() -> None:
         )
     except Exception:
         logger.exception("Daily brief job failed after retries")
+    _write_heartbeat()
+
+
+def interest_analysis_job() -> None:
+    """每日兴趣分析：检查新收藏并推荐主题"""
+    from packages.ai.interest_analyzer import InterestAnalyzer
+
+    logger.info("Starting interest analysis check...")
+    try:
+        analyzer = InterestAnalyzer()
+        has_new, total = analyzer.has_new_favorites_since_last()
+        if total < 3:
+            logger.info("Interest analysis skipped: only %d favorites (need >= 3)", total)
+            return
+        if not has_new:
+            logger.info("Interest analysis skipped: no new favorites since last run")
+            return
+        logger.info("Running interest analysis (%d total favorites)...", total)
+        result = analyzer.analyze_favorites()
+        n_sug = len(result.get("suggestions", []))
+        logger.info("Interest analysis done: %d suggestions generated", n_sug)
+    except Exception:
+        logger.exception("Interest analysis job failed")
     _write_heartbeat()
 
 
@@ -203,6 +239,15 @@ def run_worker() -> None:
         "12:00" if getattr(settings, "daily_cron", "").startswith("0 4") else "计算中",
     )
 
+    # 每日兴趣分析（UTC 6 点 = 北京时间 14:00）
+    scheduler.add_job(
+        interest_analysis_job,
+        trigger=CronTrigger(hour=6, minute=0),
+        id="interest_analysis",
+        replace_existing=True,
+    )
+    logger.info("✅ 已添加：兴趣分析任务（UTC 06:00）")
+
     # 每周图谱维护（UTC 周日 22 点 = 北京时间周一 6 点）
     weekly_trigger = CronTrigger.from_crontab(getattr(settings, "weekly_cron", "0 22 * * 0"))
     scheduler.add_job(
@@ -237,6 +282,7 @@ def run_worker() -> None:
     logger.info("调度时间表（UTC → 北京时间）:")
     logger.info("  • 主题抓取：每小时整点 → 每小时整点")
     logger.info("  • 每日简报：04:00 → 12:00")
+    logger.info("  • 兴趣分析：06:00 → 14:00")
     logger.info("  • 每周图谱：周日 22:00 → 周一 06:00")
     logger.info("  • 闲时处理：全天自动检测 → 全天自动检测")
     logger.info("=" * 60)

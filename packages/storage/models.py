@@ -52,6 +52,14 @@ class Paper(Base):
         default=False,
         index=True,
     )
+    user_viewed: Mapped[bool] = mapped_column(
+        nullable=False,
+        default=False,
+        index=True,
+    )
+    user_viewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=_utcnow, nullable=False, index=True
     )
@@ -380,6 +388,36 @@ class ActionPaper(Base):
         ForeignKey("papers.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+    )
+
+
+class Note(Base):
+    """用户笔记 — 支持论文级高亮/想法 和 主题级笔记"""
+
+    __tablename__ = "notes"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    paper_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("papers.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    topic_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("topic_subscriptions.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    note_type: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="idea",
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_utcnow, onupdate=_utcnow, nullable=False
     )
 
 

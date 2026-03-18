@@ -171,6 +171,30 @@ def fetch_topic_status(topic_id: str) -> dict:
     return {"topic": topic_info}
 
 
+# ---------- HF Trending ----------
+
+
+@router.post("/ingest/hf-trending")
+def ingest_hf_trending(min_upvotes: int = Query(default=8, ge=0)) -> dict:
+    """Fetch HF trending papers and ingest into the library."""
+    from packages.ai.daily_runner import run_hf_trending_ingest
+    from packages.domain.task_tracker import global_tracker
+
+    def _fetch_fn(progress_callback=None):
+        return run_hf_trending_ingest(min_upvotes=min_upvotes)
+
+    task_id = global_tracker.submit(
+        task_type="fetch",
+        title="HF Trending Papers",
+        fn=_fetch_fn,
+    )
+    return {
+        "status": "started",
+        "task_id": task_id,
+        "message": "HF Trending fetch started in background",
+    }
+
+
 # ---------- 摄入 ----------
 
 

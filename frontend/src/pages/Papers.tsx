@@ -7,9 +7,9 @@ import { useNavigate } from "react-router-dom";
 import { Button, Badge, Empty, Spinner, Modal, Input } from "@/components/ui";
 import { PaperListSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/contexts/ToastContext";
-import { paperApi, ingestApi, topicApi, pipelineApi, actionApi, tasksApi } from "@/services/api";
+import { paperApi, ingestApi, topicApi, pipelineApi, actionApi, tasksApi, notesApi, interestApi } from "@/services/api";
 import { formatDate, truncate } from "@/lib/utils";
-import type { Paper, Topic, FolderStats, CollectionAction } from "@/types";
+import type { Paper, Topic, FolderStats, CollectionAction, Note, TopicNotesResponse, InterestAnalysis } from "@/types";
 import {
   FileText,
   Download,
@@ -18,6 +18,7 @@ import {
   ExternalLink,
   BookOpen,
   Eye,
+  EyeOff,
   BookMarked,
   ChevronRight,
   ChevronLeft,
@@ -40,6 +41,15 @@ import {
   CalendarClock,
   ArrowUp,
   ArrowDown,
+  StickyNote,
+  X,
+  Pencil,
+  Trash2,
+  BookmarkPlus,
+  Compass,
+  Plus,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
 
 /* ========== 类型 ========== */
@@ -115,6 +125,76 @@ export default function Papers() {
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState("");
+  const [hideViewed, setHideViewed] = useState(false);
+
+  /* 主题笔记面板 */
+  const [topicNotesOpen, setTopicNotesOpen] = useState(false);
+  const [topicNotesId, setTopicNotesId] = useState<string | null>(null);
+  const [topicNotesName, setTopicNotesName] = useState("");
+  const [topicNotesData, setTopicNotesData] = useState<TopicNotesResponse | null>(null);
+  const [topicNoteInput, setTopicNoteInput] = useState("");
+  const [topicNotesLoading, setTopicNotesLoading] = useState(false);
+
+  const openTopicNotes = useCallback((id: string, name: string) => {
+    setTopicNotesId(id);
+    setTopicNotesName(name);
+    setTopicNotesOpen(true);
+    setTopicNotesLoading(true);
+    notesApi.listByTopic(id).then(setTopicNotesData).catch(() => {}).finally(() => setTopicNotesLoading(false));
+  }, []);
+
+  const refreshTopicNotes = useCallback(() => {
+    if (!topicNotesId) return;
+    notesApi.listByTopic(topicNotesId).then(setTopicNotesData).catch(() => {});
+  }, [topicNotesId]);
+
+  const handleAddTopicNote = async () => {
+    if (!topicNotesId || !topicNoteInput.trim()) return;
+    try {
+      await notesApi.createTopicNote(topicNotesId, topicNoteInput.trim());
+      setTopicNoteInput("");
+      refreshTopicNotes();
+    } catch { toast("error", "保存笔记失败"); }
+  };
+
+  const handleDeleteTopicNote = async (noteId: string) => {
+    try {
+      await notesApi.delete(noteId);
+      refreshTopicNotes();
+    } catch { toast("error", "删除笔记失败"); }
+  };
+
+  /* 兴趣发现面板 */
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
+  const [discoveryData, setDiscoveryData] = useState<InterestAnalysis | null>(null);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const [discoveryAnalyzing, setDiscoveryAnalyzing] = useState(false);
+  const [discoverySubscribed, setDiscoverySubscribed] = useState<Set<string>>(new Set());
+
+  const openDiscovery = useCallback(() => {
+    setDiscoveryOpen(true);
+    setDiscoveryLoading(true);
+    interestApi.suggestions().then(setDiscoveryData).catch(() => {}).finally(() => setDiscoveryLoading(false));
+  }, []);
+
+  const handleDiscoveryAnalyze = async () => {
+    setDiscoveryAnalyzing(true);
+    try {
+      await interestApi.analyze();
+      await new Promise((r) => setTimeout(r, 3000));
+      const result = await interestApi.suggestions();
+      setDiscoveryData(result);
+    } catch { toast("error", "分析失败"); }
+    finally { setDiscoveryAnalyzing(false); }
+  };
+
+  const handleDiscoverySubscribe = async (name: string, query: string) => {
+    try {
+      await interestApi.subscribe(name, query);
+      setDiscoverySubscribed((prev) => new Set(prev).add(name));
+      loadFolderStats();
+    } catch { toast("error", "订阅失败"); }
+  };
 
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
@@ -220,7 +300,7 @@ export default function Papers() {
   }, [folderStats]);
 
   /* 搜索由后端处理，前端直接使用 papers */
-  const filtered = papers;
+  const filtered = hideViewed ? papers.filter((p) => !p.user_viewed) : papers;
 
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -351,28 +431,48 @@ export default function Papers() {
                         订阅主题
                       </p>
                     )}
-                    <button
-                      onClick={() => handleFolderClick(folder.id)}
-                      className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-all ${
-                        isActive
-                          ? "bg-primary/10 font-medium text-primary"
-                          : "text-ink-secondary hover:bg-hover hover:text-ink"
-                      }`}
-                    >
-                      <span className={isActive ? "text-primary" : folder.color}>
-                        {isActive && folder.type === "topic"
-                          ? <FolderOpen className="h-4 w-4" />
-                          : folder.icon}
-                      </span>
-                      <span className="flex-1 truncate">{folder.name}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                        isActive
-                          ? "bg-primary/15 text-primary"
-                          : "bg-page text-ink-tertiary"
-                      }`}>
-                        {folder.count}
-                      </span>
-                    </button>
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => handleFolderClick(folder.id)}
+                        className={`group flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition-all ${
+                          isActive
+                            ? "bg-primary/10 font-medium text-primary"
+                            : "text-ink-secondary hover:bg-hover hover:text-ink"
+                        }`}
+                      >
+                        <span className={isActive ? "text-primary" : folder.color}>
+                          {isActive && folder.type === "topic"
+                            ? <FolderOpen className="h-4 w-4" />
+                            : folder.icon}
+                        </span>
+                        <span className="flex-1 truncate">{folder.name}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          isActive
+                            ? "bg-primary/15 text-primary"
+                            : "bg-page text-ink-tertiary"
+                        }`}>
+                          {folder.count}
+                        </span>
+                      </button>
+                      {folder.type === "topic" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openTopicNotes(folder.id, folder.name); }}
+                          className="shrink-0 rounded-lg p-1.5 text-ink-tertiary transition-colors hover:bg-primary/10 hover:text-primary"
+                          title="主题笔记"
+                        >
+                          <StickyNote className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {folder.id === "favorites" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openDiscovery(); }}
+                          className="shrink-0 rounded-lg p-1.5 text-ink-tertiary transition-colors hover:bg-primary/10 hover:text-primary"
+                          title="兴趣发现"
+                        >
+                          <Compass className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -551,6 +651,18 @@ export default function Papers() {
                   </button>
                 ))}
               </div>
+
+              {/* 隐藏已读 */}
+              <button
+                onClick={() => setHideViewed((v) => !v)}
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  hideViewed ? "bg-primary/10 text-primary" : "text-ink-tertiary hover:text-ink"
+                }`}
+                title={hideViewed ? "显示全部论文" : "隐藏已浏览论文"}
+              >
+                {hideViewed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                {hideViewed ? "已隐藏已读" : "隐藏已读"}
+              </button>
 
               {/* 分隔线 */}
               <div className="h-4 w-px bg-border-light" />
@@ -741,6 +853,197 @@ export default function Papers() {
       </main>
 
       <IngestModal open={ingestOpen} onClose={() => setIngestOpen(false)} onDone={() => { loadPapers(); loadFolderStats(); }} />
+
+      {/* ========== 主题笔记滑出面板 ========== */}
+      {topicNotesOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setTopicNotesOpen(false)} />
+          <div className="relative flex h-full w-full max-w-md flex-col bg-surface shadow-2xl animate-in slide-in-from-right">
+            {/* 头部 */}
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="min-w-0">
+                <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
+                  <StickyNote className="h-4 w-4 text-primary" />
+                  {topicNotesName}
+                </h2>
+                <p className="mt-0.5 text-xs text-ink-tertiary">主题笔记 & 论文笔记汇总</p>
+              </div>
+              <button onClick={() => setTopicNotesOpen(false)} className="rounded-lg p-2 text-ink-tertiary transition-colors hover:bg-hover hover:text-ink">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* 添加主题笔记 */}
+            <div className="border-b border-border/60 px-5 py-3">
+              <div className="flex gap-2">
+                <textarea
+                  value={topicNoteInput}
+                  onChange={(e) => setTopicNoteInput(e.target.value)}
+                  placeholder="写下关于该研究方向的想法..."
+                  rows={2}
+                  className="flex-1 resize-none rounded-xl border border-border bg-page px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
+                  onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAddTopicNote(); }}
+                />
+                <button
+                  onClick={handleAddTopicNote}
+                  disabled={!topicNoteInput.trim()}
+                  className="shrink-0 self-end rounded-xl bg-primary px-3 py-2 text-sm text-white transition-colors hover:bg-primary/90 disabled:opacity-40"
+                >
+                  <BookmarkPlus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* 笔记内容 */}
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {topicNotesLoading ? (
+                <div className="flex justify-center py-12"><Spinner text="加载中..." /></div>
+              ) : !topicNotesData ? (
+                <Empty label="加载失败" />
+              ) : (
+                <div className="space-y-6">
+                  {/* 主题级笔记 */}
+                  {topicNotesData.topic_notes.length > 0 && (
+                    <div>
+                      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-tertiary">
+                        <StickyNote className="h-3 w-3" /> 主题笔记
+                      </h3>
+                      <div className="space-y-2">
+                        {topicNotesData.topic_notes.map((note) => (
+                          <TopicNoteCard key={note.id} note={note} onDelete={handleDeleteTopicNote} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 按论文分组的笔记 */}
+                  {topicNotesData.paper_groups.map((group) => (
+                    <div key={group.paper_id}>
+                      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-ink">
+                        <FileText className="h-3 w-3 text-primary" />
+                        <span className="truncate">{group.paper_title || group.paper_id}</span>
+                        <span className="shrink-0 text-[10px] font-normal text-ink-tertiary">({group.notes.length})</span>
+                      </h3>
+                      <div className="space-y-2 pl-4">
+                        {group.notes.map((note) => (
+                          <TopicNoteCard key={note.id} note={note} onDelete={handleDeleteTopicNote} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {topicNotesData.topic_notes.length === 0 && topicNotesData.paper_groups.length === 0 && (
+                    <Empty label="还没有笔记" />
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== 兴趣发现面板 ========== */}
+      {discoveryOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setDiscoveryOpen(false)} />
+          <div className="relative flex h-full w-full max-w-md flex-col bg-surface shadow-2xl animate-in slide-in-from-right">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Compass className="h-5 w-5 text-primary" />
+                <h2 className="text-base font-semibold text-ink">兴趣发现</h2>
+              </div>
+              <button onClick={() => setDiscoveryOpen(false)} className="rounded-lg p-1.5 text-ink-tertiary hover:bg-hover">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5">
+              {discoveryLoading ? (
+                <div className="flex justify-center py-12"><Spinner text="加载中..." /></div>
+              ) : discoveryData && discoveryData.suggestions.length > 0 ? (
+                <div className="space-y-4">
+                  {discoveryData.analyzed_at && (
+                    <p className="text-[11px] text-ink-tertiary">
+                      基于 {discoveryData.favorite_count} 篇收藏分析 · {new Date(discoveryData.analyzed_at).toLocaleDateString("zh-CN")}
+                    </p>
+                  )}
+                  {discoveryData.interests.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {discoveryData.interests.map((interest) => (
+                        <span key={interest} className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {discoveryData.suggestions.map((s) => {
+                    const subscribed = discoverySubscribed.has(s.name);
+                    return (
+                      <div key={s.name} className="rounded-xl border border-border bg-page p-4">
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-ink">{s.name}</p>
+                            <p className="mt-1 text-xs leading-relaxed text-ink-secondary">{s.reason}</p>
+                          </div>
+                          <button
+                            onClick={() => handleDiscoverySubscribe(s.name, s.query)}
+                            disabled={subscribed}
+                            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                              subscribed
+                                ? "bg-success-light text-success"
+                                : "bg-primary/10 text-primary hover:bg-primary/20"
+                            }`}
+                          >
+                            {subscribed ? <><CheckCircle className="mr-1 inline h-3.5 w-3.5" />已订阅</> : <><Plus className="mr-1 inline h-3.5 w-3.5" />订阅</>}
+                          </button>
+                        </div>
+                        <div className="mb-2 flex items-center gap-2">
+                          <span className="rounded-md bg-surface px-2 py-0.5 font-mono text-[10px] text-ink-tertiary">{s.query}</span>
+                          <span className="text-[10px] text-ink-tertiary">置信度 {(s.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                        {s.preview_papers.length > 0 && (
+                          <div className="space-y-1 border-t border-border-light pt-2">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-ink-tertiary">预览论文</p>
+                            {s.preview_papers.map((p) => (
+                              <p key={p.arxiv_id} className="truncate text-[11px] text-ink-secondary">
+                                <Search className="mr-1 inline h-3 w-3 text-ink-tertiary" />{p.title}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button
+                    onClick={handleDiscoveryAnalyze}
+                    disabled={discoveryAnalyzing}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-xs font-medium text-ink-secondary transition-colors hover:bg-hover"
+                  >
+                    {discoveryAnalyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    重新分析
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4 py-12 text-center">
+                  <Heart className="mx-auto h-10 w-10 text-ink-tertiary/30" />
+                  <div>
+                    <p className="text-sm text-ink-tertiary">收藏论文后可以发现新方向</p>
+                    <p className="mt-1 text-xs text-ink-tertiary">系统会分析你的收藏偏好，推荐新的主题订阅</p>
+                  </div>
+                  <button
+                    onClick={handleDiscoveryAnalyze}
+                    disabled={discoveryAnalyzing}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary/10 px-5 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+                  >
+                    {discoveryAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    分析我的收藏
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -783,6 +1086,11 @@ const PaperListItem = memo(function PaperListItem({ paper, selected, onSelect, o
                 {paper.title}
               </h3>
               <Badge variant={sc.variant} className="shrink-0">{sc.label}</Badge>
+              {paper.user_viewed && (
+                <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-page px-1.5 py-0.5 text-[9px] font-medium text-ink-tertiary">
+                  <Eye className="h-2.5 w-2.5" /> 已读
+                </span>
+              )}
               {paper.has_embedding && (
                 <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-info-light px-1.5 py-0.5 text-[9px] font-medium text-info">
                   <CheckCircle2 className="h-2.5 w-2.5" /> 嵌入
@@ -840,7 +1148,14 @@ const PaperGridItem = memo(function PaperGridItem({ paper, onFavorite, onClick }
       className="group flex cursor-pointer flex-col rounded-xl border border-border/60 bg-surface p-3.5 text-left transition-all hover:shadow-sm"
     >
       <div className="mb-2 flex items-center justify-between">
-        <Badge variant={sc.variant}>{sc.label}</Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge variant={sc.variant}>{sc.label}</Badge>
+          {paper.user_viewed && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-page px-1.5 py-0.5 text-[9px] font-medium text-ink-tertiary">
+              <Eye className="h-2.5 w-2.5" /> 已读
+            </span>
+          )}
+        </div>
         <button aria-label={paper.favorited ? "取消收藏" : "收藏"} onClick={onFavorite} className="rounded-lg p-1 transition-colors hover:bg-error/10">
           <Heart className={`h-3.5 w-3.5 ${paper.favorited ? "fill-red-500 text-red-500" : "text-ink-tertiary"}`} />
         </button>
@@ -928,4 +1243,40 @@ function ActionBadge({ type }: { type: string }) {
     case "subscription_ingest": return <Tag className={`${cls} text-warning`} />;
     default: return <FileText className={`${cls} text-ink-tertiary`} />;
   }
+}
+
+function TopicNoteCard({ note, onDelete }: { note: Note; onDelete: (id: string) => void }) {
+  return (
+    <div className="group rounded-xl border border-border/60 bg-page p-3 transition-colors hover:border-border">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-center gap-1.5">
+            <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${
+              note.note_type === "highlight" ? "bg-amber-500/10 text-amber-600" :
+              note.note_type === "topic_note" ? "bg-blue-500/10 text-blue-600" :
+              "bg-primary/10 text-primary"
+            }`}>
+              {note.note_type === "highlight" ? "高亮" : note.note_type === "topic_note" ? "主题" : "想法"}
+            </span>
+            {note.page_number != null && <span className="text-[9px] text-ink-tertiary">P{note.page_number}</span>}
+            <span className="text-[9px] text-ink-tertiary">
+              {new Date(note.created_at).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+          {note.source_text && (
+            <div className="mb-1.5 rounded-lg border-l-2 border-amber-400 bg-amber-500/5 px-2 py-1 text-[11px] leading-relaxed text-ink-secondary">
+              {note.source_text.length > 200 ? note.source_text.slice(0, 200) + "..." : note.source_text}
+            </div>
+          )}
+          {note.content && <p className="whitespace-pre-wrap text-xs leading-relaxed text-ink">{note.content}</p>}
+        </div>
+        <button
+          onClick={() => onDelete(note.id)}
+          className="shrink-0 rounded-lg p-1 text-ink-tertiary opacity-0 transition-all group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  );
 }

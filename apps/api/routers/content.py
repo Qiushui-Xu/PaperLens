@@ -219,3 +219,71 @@ def today_summary() -> dict:
     result = TrendService().get_today_summary()
     cache.set("today_summary", result, ttl=60)
     return result
+
+
+# ---------- 兴趣发现 ----------
+
+
+@router.post("/interests/analyze")
+def start_interest_analysis() -> dict:
+    """触发一次基于收藏的兴趣分析（异步任务）"""
+    from packages.ai.interest_analyzer import InterestAnalyzer
+
+    analyzer = InterestAnalyzer()
+
+    def _run_analysis(progress_callback=None):
+        return analyzer.analyze_favorites(progress_callback=progress_callback)
+
+    task_id = global_tracker.submit(
+        task_type="interest_analysis",
+        title="分析收藏兴趣",
+        fn=_run_analysis,
+        total=100,
+    )
+    return {"task_id": task_id, "status": "started"}
+
+
+@router.get("/interests/suggestions")
+def get_interest_suggestions() -> dict:
+    """获取最新一次兴趣分析结果"""
+    from packages.ai.interest_analyzer import InterestAnalyzer
+
+    result = InterestAnalyzer().get_latest_suggestions()
+    if result is None:
+        return {
+            "interests": [],
+            "suggestions": [],
+            "analyzed_at": None,
+            "favorite_count": 0,
+        }
+    return result
+
+
+@router.post("/interests/subscribe")
+def subscribe_suggested_topic(body: dict) -> dict:
+    """从兴趣建议一键创建主题订阅"""
+    name = body.get("name", "").strip()
+    query = body.get("query", "").strip()
+    if not name or not query:
+        raise HTTPException(status_code=400, detail="name and query are required")
+
+    from packages.storage.repositories import TopicRepository
+
+    with session_scope() as session:
+        repo = TopicRepository(session)
+        topic = repo.upsert_topic(
+            name=name,
+            query=query,
+            enabled=True,
+            max_results_per_run=15,
+            schedule_frequency="daily",
+            schedule_time_utc=2,
+            enable_date_filter=True,
+            date_filter_days=3,
+        )
+        return {
+            "id": topic.id,
+            "name": topic.name,
+            "query": topic.query,
+            "enabled": topic.enabled,
+        }

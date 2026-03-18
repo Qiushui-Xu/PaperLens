@@ -14,7 +14,13 @@ class PaperCreate(BaseModel):
 
 class SkimReport(BaseModel):
     one_liner: str
-    innovations: list[str]
+    problem: str = ""
+    method: str = ""
+    contributions: list[str] = []
+    benchmarks: list[str] = []
+    results_summary: str = ""
+    conclusions: str = ""
+    innovations: list[str] = []
     keywords: list[str] = []
     title_zh: str = ""
     abstract_zh: str = ""
@@ -22,10 +28,21 @@ class SkimReport(BaseModel):
 
 
 class DeepDiveReport(BaseModel):
-    method_summary: str
-    experiments_summary: str
-    ablation_summary: str
-    reviewer_risks: list[str]
+    problem_and_motivation: str = ""
+    method_architecture: str = ""
+    key_figures: list[dict] = Field(default_factory=list)
+    pseudocode: str = ""
+    experiment_setup: str = ""
+    main_results: str = ""
+    ablation_study: str = ""
+    comparison_with_prior_work: str = ""
+    limitations: list[str] = []
+    future_research: list[str] = []
+    # legacy fields kept for backward compat
+    method_summary: str = ""
+    experiments_summary: str = ""
+    ablation_summary: str = ""
+    reviewer_risks: list[str] = []
 
 
 class AskRequest(BaseModel):

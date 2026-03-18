@@ -25,6 +25,7 @@ from packages.storage.models import (
     EmailConfig,
     GeneratedContent,
     LLMProviderConfig,
+    Note,
     Paper,
     PaperTopic,
     PipelineRun,
@@ -394,6 +395,15 @@ class PaperRepository:
         if upgrade:
             paper.read_status = status
 
+    def mark_viewed(self, paper_id: UUID) -> bool:
+        """Mark a paper as viewed by the user. Returns True if status changed."""
+        paper = self.get_by_id(paper_id)
+        if getattr(paper, "user_viewed", False):
+            return False
+        paper.user_viewed = True
+        paper.user_viewed_at = datetime.now(UTC)
+        return True
+
     def similar_by_embedding(
         self,
         vector: list[float],
@@ -487,23 +497,80 @@ class AnalysisRepository:
 
     def upsert_skim(self, paper_id: UUID, skim: SkimReport) -> None:
         report = self._get_or_create(paper_id)
-        innovations = "".join([f"  - {x}\n" for x in skim.innovations])
-        report.summary_md = f"- 一句话: {skim.one_liner}\n- 创新点:\n{innovations}"
+
+        parts = [f"## Summary\n{skim.one_liner}\n"]
+        if skim.problem:
+            parts.append(f"## Problem\n{skim.problem}\n")
+        if skim.method:
+            parts.append(f"## Method\n{skim.method}\n")
+        if skim.contributions:
+            items = "".join(f"- {c}\n" for c in skim.contributions)
+            parts.append(f"## Contributions\n{items}")
+        if skim.benchmarks:
+            parts.append(f"## Benchmarks\n{', '.join(skim.benchmarks)}\n")
+        if skim.results_summary:
+            parts.append(f"## Results\n{skim.results_summary}\n")
+        if skim.conclusions:
+            parts.append(f"## Conclusions\n{skim.conclusions}\n")
+        if skim.innovations:
+            items = "".join(f"- {x}\n" for x in skim.innovations)
+            parts.append(f"## Innovations\n{items}")
+
+        report.summary_md = "\n".join(parts)
         report.skim_score = skim.relevance_score
-        report.key_insights = {"skim_innovations": skim.innovations}
+        report.key_insights = {
+            "skim_innovations": skim.innovations,
+            "problem": skim.problem,
+            "method": skim.method,
+            "contributions": skim.contributions,
+            "benchmarks": skim.benchmarks,
+            "results_summary": skim.results_summary,
+            "conclusions": skim.conclusions,
+        }
 
     def upsert_deep_dive(self, paper_id: UUID, deep: DeepDiveReport) -> None:
         report = self._get_or_create(paper_id)
-        risks = "".join([f"- {x}\n" for x in deep.reviewer_risks])
-        report.deep_dive_md = (
-            f"## Method\n{deep.method_summary}\n\n"
-            f"## Experiments\n{deep.experiments_summary}\n\n"
-            f"## Ablation\n{deep.ablation_summary}\n\n"
-            f"## Reviewer Risks\n{risks}"
-        )
+
+        parts = []
+        if deep.problem_and_motivation:
+            parts.append(f"## Problem & Motivation\n{deep.problem_and_motivation}\n")
+        if deep.method_architecture:
+            parts.append(f"## Method Architecture\n{deep.method_architecture}\n")
+        if deep.key_figures:
+            fig_lines = []
+            for fig in deep.key_figures:
+                fig_lines.append(
+                    f"- **{fig.get('figure_id', '?')}** "
+                    f"[{fig.get('type', '')}]: {fig.get('description', '')}"
+                )
+            parts.append(f"## Key Figures & Tables\n" + "\n".join(fig_lines) + "\n")
+        if deep.pseudocode:
+            parts.append(f"## Pseudocode\n```\n{deep.pseudocode}\n```\n")
+        if deep.experiment_setup:
+            parts.append(f"## Experiment Setup\n{deep.experiment_setup}\n")
+        if deep.main_results:
+            parts.append(f"## Main Results\n{deep.main_results}\n")
+        if deep.ablation_study:
+            parts.append(f"## Ablation Study\n{deep.ablation_study}\n")
+        if deep.comparison_with_prior_work:
+            parts.append(f"## Comparison with Prior Work\n{deep.comparison_with_prior_work}\n")
+        if deep.limitations:
+            items = "".join(f"- {x}\n" for x in deep.limitations)
+            parts.append(f"## Limitations\n{items}")
+        if deep.future_research:
+            items = "".join(f"- {x}\n" for x in deep.future_research)
+            parts.append(f"## Future Research Ideas\n{items}")
+        if deep.reviewer_risks:
+            items = "".join(f"- {x}\n" for x in deep.reviewer_risks)
+            parts.append(f"## Reviewer Risks\n{items}")
+
+        report.deep_dive_md = "\n".join(parts)
         report.key_insights = {
             **(report.key_insights or {}),
             "reviewer_risks": deep.reviewer_risks,
+            "future_research": deep.future_research,
+            "key_figures": deep.key_figures,
+            "limitations": deep.limitations,
         }
 
     def _get_or_create(self, paper_id: UUID) -> AnalysisReport:
@@ -1348,3 +1415,121 @@ class AgentPendingActionRepository:
 
 
         return config
+
+
+class NoteRepository:
+    """用户笔记 CRUD + 按论文/主题查询"""
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def create(
+        self,
+        *,
+        paper_id: str | None = None,
+        topic_id: str | None = None,
+        note_type: str = "idea",
+        content: str = "",
+        source_text: str = "",
+        page_number: int | None = None,
+    ) -> Note:
+        note = Note(
+            paper_id=paper_id,
+            topic_id=topic_id,
+            note_type=note_type,
+            content=content,
+            source_text=source_text,
+            page_number=page_number,
+        )
+        self.session.add(note)
+        self.session.flush()
+        return note
+
+    def get_by_id(self, note_id: str) -> Note | None:
+        return self.session.get(Note, note_id)
+
+    def update(self, note_id: str, content: str) -> Note | None:
+        note = self.get_by_id(note_id)
+        if not note:
+            return None
+        note.content = content
+        note.updated_at = datetime.now(UTC)
+        self.session.flush()
+        return note
+
+    def delete(self, note_id: str) -> bool:
+        note = self.get_by_id(note_id)
+        if not note:
+            return False
+        self.session.delete(note)
+        self.session.flush()
+        return True
+
+    def list_by_paper(self, paper_id: str) -> list[Note]:
+        q = (
+            select(Note)
+            .where(Note.paper_id == paper_id)
+            .order_by(Note.created_at.desc())
+        )
+        return list(self.session.scalars(q).all())
+
+    def list_by_topic(self, topic_id: str) -> dict:
+        """Return topic-level notes + paper notes aggregated under paper titles."""
+        # 1) standalone topic notes
+        topic_notes = list(
+            self.session.scalars(
+                select(Note)
+                .where(Note.topic_id == topic_id, Note.paper_id.is_(None))
+                .order_by(Note.created_at.desc())
+            ).all()
+        )
+
+        # 2) paper notes from papers belonging to this topic
+        paper_ids_q = select(PaperTopic.paper_id).where(PaperTopic.topic_id == topic_id)
+        paper_notes = list(
+            self.session.scalars(
+                select(Note)
+                .where(Note.paper_id.in_(paper_ids_q))
+                .order_by(Note.created_at.desc())
+            ).all()
+        )
+
+        # group paper notes by paper
+        from collections import defaultdict
+        grouped: dict[str, list[Note]] = defaultdict(list)
+        for n in paper_notes:
+            grouped[n.paper_id].append(n)  # type: ignore[arg-type]
+
+        # resolve paper titles
+        paper_titles: dict[str, str] = {}
+        if grouped:
+            rows = self.session.execute(
+                select(Paper.id, Paper.title).where(Paper.id.in_(list(grouped.keys())))
+            ).all()
+            paper_titles = {r[0]: r[1] for r in rows}
+
+        return {
+            "topic_notes": [self._to_dict(n) for n in topic_notes],
+            "paper_groups": [
+                {
+                    "paper_id": pid,
+                    "paper_title": paper_titles.get(pid, ""),
+                    "notes": [self._to_dict(n) for n in notes],
+                }
+                for pid, notes in grouped.items()
+            ],
+        }
+
+    @staticmethod
+    def _to_dict(note: Note) -> dict:
+        return {
+            "id": note.id,
+            "paper_id": note.paper_id,
+            "topic_id": note.topic_id,
+            "note_type": note.note_type,
+            "content": note.content,
+            "source_text": note.source_text,
+            "page_number": note.page_number,
+            "created_at": note.created_at.isoformat() if note.created_at else None,
+            "updated_at": note.updated_at.isoformat() if note.updated_at else None,
+        }

@@ -50,6 +50,7 @@ import type {
   ActiveTaskInfo,
   LoginResponse,
   AuthStatusResponse,
+  InterestAnalysis,
 } from "@/types";
 
 export type {
@@ -202,6 +203,8 @@ export const paperApi = {
     get<{ paper_id: string; similar_ids: string[]; items?: { id: string; title: string; arxiv_id?: string; read_status?: string }[] }>(`/papers/${id}/similar?top_k=${topK}`),
   toggleFavorite: (id: string) =>
     patch<{ id: string; favorited: boolean }>(`/papers/${id}/favorite`),
+  markViewed: (id: string) =>
+    post<{ id: string; user_viewed: boolean; changed: boolean }>(`/papers/${id}/view`),
   getFigures: (id: string) =>
     get<{ items: FigureAnalysisItem[] }>(`/papers/${id}/figures`),
   analyzeFigures: (id: string, maxFigures = 10) =>
@@ -226,6 +229,33 @@ export const paperApi = {
   },
   aiExplain: (id: string, text: string, action: "explain" | "translate" | "summarize") =>
     post<{ action: string; result: string }>(`/papers/${id}/ai/explain`, { text, action }),
+};
+
+/* ========== 笔记 ========== */
+import type { Note, TopicNotesResponse } from "@/types";
+
+export const notesApi = {
+  listByPaper: (paperId: string) =>
+    get<{ items: Note[] }>(`/papers/${paperId}/notes`),
+  createPaperNote: (paperId: string, data: { note_type?: string; content?: string; source_text?: string; page_number?: number | null }) =>
+    post<Note>(`/papers/${paperId}/notes`, data),
+  update: (noteId: string, content: string) =>
+    patch<Note>(`/notes/${noteId}`, { content }),
+  delete: (noteId: string) =>
+    del<{ deleted: string }>(`/notes/${noteId}`),
+  listByTopic: (topicId: string) =>
+    get<TopicNotesResponse>(`/topics/${topicId}/notes`),
+  createTopicNote: (topicId: string, content: string) =>
+    post<Note>(`/topics/${topicId}/notes`, { content }),
+};
+
+/* ========== 兴趣发现 ========== */
+
+export const interestApi = {
+  analyze: () => post<{ task_id: string; status: string }>("/interests/analyze"),
+  suggestions: () => get<InterestAnalysis>("/interests/suggestions"),
+  subscribe: (name: string, query: string) =>
+    post<{ id: string; name: string; query: string; enabled: boolean }>("/interests/subscribe", { name, query }),
 };
 
 /* ========== 摄入 ========== */

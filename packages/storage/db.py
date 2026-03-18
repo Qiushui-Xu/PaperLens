@@ -135,6 +135,8 @@ def run_migrations() -> None:
             "7",
         )
         _safe_add_column(conn, "papers", "favorited", "BOOLEAN", "0")
+        _safe_add_column(conn, "papers", "user_viewed", "BOOLEAN", "0")
+        _safe_add_column(conn, "papers", "user_viewed_at", "DATETIME", "NULL")
         # 关键列索引加速 ORDER BY / WHERE 查询
         _safe_create_index(conn, "ix_papers_created_at", "papers", "created_at")
         _safe_create_index(conn, "ix_prompt_traces_created_at", "prompt_traces", "created_at")
@@ -237,6 +239,30 @@ def run_migrations() -> None:
             _safe_create_index(
                 conn, "ix_generated_contents_paper_id", "generated_contents", "paper_id"
             )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+        # notes 表
+        try:
+            conn.execute(
+                text("""
+                CREATE TABLE IF NOT EXISTS notes (
+                    id VARCHAR(36) PRIMARY KEY,
+                    paper_id VARCHAR(36) REFERENCES papers(id) ON DELETE CASCADE,
+                    topic_id VARCHAR(36) REFERENCES topic_subscriptions(id) ON DELETE CASCADE,
+                    note_type VARCHAR(32) NOT NULL DEFAULT 'idea',
+                    content TEXT NOT NULL DEFAULT '',
+                    source_text TEXT NOT NULL DEFAULT '',
+                    page_number INTEGER,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            )
+            _safe_create_index(conn, "ix_notes_paper_id", "notes", "paper_id")
+            _safe_create_index(conn, "ix_notes_topic_id", "notes", "topic_id")
+            _safe_create_index(conn, "ix_notes_created_at", "notes", "created_at")
             conn.commit()
         except Exception:
             conn.rollback()

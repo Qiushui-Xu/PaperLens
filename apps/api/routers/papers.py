@@ -148,6 +148,7 @@ def paper_detail(paper_id: UUID) -> dict:
             "read_status": p.read_status.value,
             "pdf_path": p.pdf_path,
             "favorited": getattr(p, "favorited", False),
+            "user_viewed": getattr(p, "user_viewed", False),
             "categories": (p.metadata_json or {}).get("categories", []),
             "authors": (p.metadata_json or {}).get("authors", []),
             "keywords": (p.metadata_json or {}).get("keywords", []),
@@ -158,6 +159,27 @@ def paper_detail(paper_id: UUID) -> dict:
             "has_embedding": p.embedding is not None,
             "skim_report": skim_data,
             "deep_report": deep_data,
+        }
+
+
+@router.post("/papers/{paper_id}/view")
+def mark_viewed(paper_id: UUID) -> dict:
+    """Mark a paper as viewed by the user."""
+    with session_scope() as session:
+        repo = PaperRepository(session)
+        try:
+            changed = repo.mark_viewed(paper_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        session.commit()
+        p = repo.get_by_id(paper_id)
+        return {
+            "id": str(p.id),
+            "user_viewed": getattr(p, "user_viewed", False),
+            "user_viewed_at": (
+                p.user_viewed_at.isoformat() if getattr(p, "user_viewed_at", None) else None
+            ),
+            "changed": changed,
         }
 
 

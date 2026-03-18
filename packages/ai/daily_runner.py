@@ -287,8 +287,42 @@ def run_topic_ingest(topic_id: str) -> dict:
     }
 
 
+def run_hf_trending_ingest(min_upvotes: int = 8) -> dict:
+    """Fetch HF trending papers, ingest + skim + embed new ones."""
+    pipelines = PaperPipelines()
+    try:
+        result = pipelines.ingest_hf_trending(min_upvotes=min_upvotes)
+    except Exception as exc:
+        logger.exception("HF trending ingest failed: %s", exc)
+        return {"status": "failed", "error": str(exc)}
+
+    ids = result.get("inserted_ids", [])
+    new_count = result.get("new_count", 0)
+
+    if not ids:
+        logger.info("HF trending: no new papers to process")
+        return {"status": "ok", "new_count": 0, **result}
+
+    logger.info("HF trending: processing %d new papers (skim + embed)...", new_count)
+    skim_ok = 0
+    with ThreadPoolExecutor(max_workers=PAPER_CONCURRENCY) as pool:
+        futs = {
+            pool.submit(_process_paper, pid, force_deep=False, deep_read_quota=0): pid
+            for pid in ids
+        }
+        for fut in as_completed(futs):
+            try:
+                r = fut.result()
+                if r.get("success"):
+                    skim_ok += 1
+            except Exception as exc:
+                logger.warning("HF skim failed for %s: %s", futs[fut], exc)
+
+    return {"status": "ok", "skimmed": skim_ok, **result}
+
+
 def run_daily_ingest() -> dict:
-    """兼容旧调用：遍历所有 enabled 主题执行抓取"""
+    """遍历所有 enabled 主题执行抓取 + HF trending"""
     with session_scope() as session:
         topic_repo = TopicRepository(session)
         topics = topic_repo.list_topics(enabled_only=True)
@@ -308,12 +342,16 @@ def run_daily_ingest() -> dict:
     for tid in topic_ids:
         results.append(run_topic_ingest(tid))
 
+    # Also fetch HF trending
+    hf_result = run_hf_trending_ingest()
+
     total_inserted = sum(r.get("inserted", 0) for r in results)
     total_processed = sum(r.get("processed", 0) for r in results)
     return {
         "newly_inserted": total_inserted,
         "processed": total_processed,
         "topics": results,
+        "hf_trending": hf_result,
     }
 
 

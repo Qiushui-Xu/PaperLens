@@ -19,6 +19,7 @@ from packages.config import get_settings
 from packages.domain.enums import ActionType, ReadStatus
 from packages.domain.schemas import DeepDiveReport, PaperCreate, SkimReport
 from packages.integrations.arxiv_client import ArxivClient
+from packages.integrations.hf_trending_client import HFTrendingClient
 from packages.integrations.llm_client import LLMClient
 from packages.integrations.semantic_scholar_client import SemanticScholarClient
 from packages.storage.db import session_scope
@@ -54,6 +55,7 @@ class PaperPipelines:
     def __init__(self) -> None:
         self.settings = get_settings()
         self.arxiv = ArxivClient()
+        self.hf = HFTrendingClient()
         self.llm = LLMClient()
         self.vision = VisionPdfReader()
         self.pdf_extractor = PdfTextExtractor()
@@ -198,7 +200,7 @@ class PaperPipelines:
         days_back: int = 7,
     ) -> list[str]:
         """ingest_arxiv 的别名，返回 inserted_ids"""
-        _, ids = self.ingest_arxiv(
+        _, ids, _new_count = self.ingest_arxiv(
             query=query,
             max_results=max_results,
             topic_id=topic_id,
@@ -231,6 +233,66 @@ class PaperPipelines:
             "inserted_ids": inserted_ids,
             "new_count": new_count,
         }
+
+    def ingest_hf_trending(
+        self,
+        min_upvotes: int = 8,
+        max_papers: int = 30,
+        topic_id: str | None = None,
+    ) -> dict:
+        """Fetch HF trending papers and upsert into DB. Returns stats dict."""
+        self.hf.min_upvotes = min_upvotes
+        self.hf.max_papers = max_papers
+        papers = self.hf.fetch_trending()
+
+        inserted_ids: list[str] = []
+        new_count = 0
+
+        with session_scope() as session:
+            repo = PaperRepository(session)
+            run_repo = PipelineRunRepository(session)
+            action_repo = ActionRepository(session)
+            run = run_repo.start("ingest_hf_trending", decision_note="HF trending")
+
+            try:
+                existing = repo.list_existing_arxiv_ids([p.arxiv_id for p in papers])
+                for paper in papers:
+                    if paper.arxiv_id not in existing:
+                        saved = self._save_paper(repo, paper, topic_id)
+                        inserted_ids.append(saved.id)
+                        new_count += 1
+
+                if inserted_ids:
+                    action_repo.create_action(
+                        action_type=ActionType.auto_collect,
+                        title="HF Trending Papers",
+                        paper_ids=inserted_ids,
+                        query="hf_trending",
+                        topic_id=topic_id,
+                    )
+
+                run_repo.finish(run.id)
+
+                if inserted_ids:
+                    threading.Thread(
+                        target=_bg_auto_link,
+                        args=(inserted_ids,),
+                        daemon=True,
+                    ).start()
+
+                logger.info(
+                    "HF trending: %d fetched, %d new papers ingested",
+                    len(papers),
+                    new_count,
+                )
+                return {
+                    "total_fetched": len(papers),
+                    "new_count": new_count,
+                    "inserted_ids": inserted_ids,
+                }
+            except Exception as exc:
+                run_repo.fail(run.id, str(exc))
+                raise
 
     def skim(self, paper_id: UUID) -> SkimReport:
         started = time.perf_counter()
@@ -304,8 +366,13 @@ class PaperPipelines:
                     )
                     paper = paper_repo.get_by_id(paper_id)
                 extracted = self.vision.extract_page_descriptions(paper.pdf_path)
-                extracted_text = self.pdf_extractor.extract_text(paper.pdf_path, max_pages=10)
-                combined = f"{extracted}\n\n[TextLayer]\n{extracted_text[:8000]}"
+                extracted_text = self.pdf_extractor.extract_text(
+                    paper.pdf_path, max_pages=15
+                )
+                if extracted and extracted_text and extracted != extracted_text:
+                    combined = f"{extracted}\n\n[TextLayer]\n{extracted_text[:12000]}"
+                else:
+                    combined = (extracted or extracted_text or "")[:20000]
                 prompt = build_deep_prompt(paper.title, combined)
                 decision = CostGuardService(session, self.llm).choose_model(
                     stage="deep",
@@ -357,6 +424,18 @@ class PaperPipelines:
                 run_repo.fail(run.id, str(exc))
                 raise
 
+    @staticmethod
+    def _safe_str(val, default: str = "", max_len: int = 0) -> str:
+        s = str(val).strip() if val else default
+        return s[:max_len] if max_len else s
+
+    @staticmethod
+    def _safe_list(val, max_items: int = 10, max_len: int = 0) -> list[str]:
+        if not val or not isinstance(val, list):
+            return [str(val)] if val else []
+        items = [str(x).strip() for x in val[:max_items] if x]
+        return [x[:max_len] if max_len else x for x in items]
+
     def _build_skim_structured(
         self,
         abstract: str,
@@ -364,28 +443,29 @@ class PaperPipelines:
         parsed_json: dict | None = None,
     ) -> SkimReport:
         if parsed_json:
-            innovations = parsed_json.get("innovations") or []
-            if not isinstance(innovations, list):
-                innovations = [str(innovations)]
-            keywords = parsed_json.get("keywords") or []
-            if not isinstance(keywords, list):
-                keywords = [str(keywords)]
-            title_zh = str(parsed_json.get("title_zh", "")).strip()
-            abstract_zh = str(parsed_json.get("abstract_zh", "")).strip()
             try:
                 score = float(parsed_json.get("relevance_score", 0.5))
             except (TypeError, ValueError):
                 score = 0.5
             score = min(max(score, 0.0), 1.0)
-            one_liner = str(parsed_json.get("one_liner", "")).strip() or llm_text[:140]
+
+            one_liner = self._safe_str(parsed_json.get("one_liner"), llm_text[:140], 280)
+            innovations = self._safe_list(parsed_json.get("innovations"), 5, 200)
             if not innovations:
                 innovations = [one_liner[:80]]
+
             return SkimReport(
-                one_liner=one_liner[:280],
-                innovations=[str(x)[:180] for x in innovations[:5]],
-                keywords=[str(k)[:60] for k in keywords[:8]],
-                title_zh=title_zh[:500],
-                abstract_zh=abstract_zh[:3000],
+                one_liner=one_liner,
+                problem=self._safe_str(parsed_json.get("problem"), "", 800),
+                method=self._safe_str(parsed_json.get("method"), "", 1500),
+                contributions=self._safe_list(parsed_json.get("contributions"), 6, 300),
+                benchmarks=self._safe_list(parsed_json.get("benchmarks"), 10, 120),
+                results_summary=self._safe_str(parsed_json.get("results_summary"), "", 1500),
+                conclusions=self._safe_str(parsed_json.get("conclusions"), "", 800),
+                innovations=innovations,
+                keywords=self._safe_list(parsed_json.get("keywords"), 8, 60),
+                title_zh=self._safe_str(parsed_json.get("title_zh"), "", 500),
+                abstract_zh=self._safe_str(parsed_json.get("abstract_zh"), "", 3000),
                 relevance_score=score,
             )
 
@@ -399,36 +479,72 @@ class PaperPipelines:
             relevance_score=score,
         )
 
-    @staticmethod
     def _build_deep_structured(
+        self,
         llm_text: str,
         parsed_json: dict | None = None,
     ) -> DeepDiveReport:
         if parsed_json:
-            risks = parsed_json.get("reviewer_risks") or []
-            if not isinstance(risks, list):
-                risks = [str(risks)]
+            key_figures = parsed_json.get("key_figures") or []
+            if not isinstance(key_figures, list):
+                key_figures = []
+            safe_figures = []
+            for fig in key_figures[:15]:
+                if isinstance(fig, dict):
+                    safe_figures.append({
+                        "figure_id": str(fig.get("figure_id", ""))[:60],
+                        "type": str(fig.get("type", "other"))[:30],
+                        "description": str(fig.get("description", ""))[:400],
+                    })
+
             return DeepDiveReport(
-                method_summary=(
-                    str(parsed_json.get("method_summary", ""))[:2400] or llm_text[:240]
+                problem_and_motivation=self._safe_str(
+                    parsed_json.get("problem_and_motivation"), "", 2000
                 ),
-                experiments_summary=(
-                    str(parsed_json.get("experiments_summary", ""))[:2400]
-                    or "Experiments section not extracted."
+                method_architecture=self._safe_str(
+                    parsed_json.get("method_architecture"), "", 3000
                 ),
-                ablation_summary=(
-                    str(parsed_json.get("ablation_summary", ""))[:2400]
-                    or "Ablation section not extracted."
+                key_figures=safe_figures,
+                pseudocode=self._safe_str(parsed_json.get("pseudocode"), "", 3000),
+                experiment_setup=self._safe_str(
+                    parsed_json.get("experiment_setup"), "", 2000
                 ),
-                reviewer_risks=(
-                    [str(x)[:400] for x in risks[:6]] or ["Limitations could not be extracted."]
+                main_results=self._safe_str(
+                    parsed_json.get("main_results"), "", 2000
                 ),
+                ablation_study=self._safe_str(
+                    parsed_json.get("ablation_study"), "", 2000
+                ),
+                comparison_with_prior_work=self._safe_str(
+                    parsed_json.get("comparison_with_prior_work"), "", 2000
+                ),
+                limitations=self._safe_list(parsed_json.get("limitations"), 6, 400),
+                future_research=self._safe_list(parsed_json.get("future_research"), 6, 500),
+                # legacy fields for backward compat
+                method_summary=self._safe_str(
+                    parsed_json.get("method_architecture")
+                    or parsed_json.get("method_summary"),
+                    llm_text[:240], 2400,
+                ),
+                experiments_summary=self._safe_str(
+                    parsed_json.get("main_results")
+                    or parsed_json.get("experiments_summary"),
+                    "", 2400,
+                ),
+                ablation_summary=self._safe_str(
+                    parsed_json.get("ablation_study")
+                    or parsed_json.get("ablation_summary"),
+                    "", 2400,
+                ),
+                reviewer_risks=self._safe_list(
+                    parsed_json.get("reviewer_risks"), 6, 400
+                ) or ["Limitations could not be extracted."],
             )
 
         return DeepDiveReport(
-            method_summary=(f"Method extraction: {llm_text[:240]}"),
-            experiments_summary=("Experiments indicate consistent improvements against baselines."),
-            ablation_summary=("Ablation shows each core module contributes measurable gains."),
+            method_summary=f"Method extraction: {llm_text[:240]}",
+            experiments_summary="Experiments indicate consistent improvements against baselines.",
+            ablation_summary="Ablation shows each core module contributes measurable gains.",
             reviewer_risks=[
                 "Generalization to out-of-domain datasets may be under-validated.",
                 "Compute budget assumptions might limit reproducibility.",

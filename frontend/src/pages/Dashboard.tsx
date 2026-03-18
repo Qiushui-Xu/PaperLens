@@ -7,9 +7,9 @@ import { useNavigate } from "react-router-dom";
 import { Button, Badge } from "@/components/ui";
 import { StatCardSkeleton } from "@/components/Skeleton";
 import { useGlobalTasks } from "@/contexts/GlobalTaskContext";
-import { systemApi, metricsApi, pipelineApi, todayApi } from "@/services/api";
+import { systemApi, metricsApi, pipelineApi, todayApi, interestApi } from "@/services/api";
 import { formatDuration, timeAgo } from "@/lib/utils";
-import type { SystemStatus, CostMetrics, PipelineRun, TodaySummary } from "@/types";
+import type { SystemStatus, CostMetrics, PipelineRun, TodaySummary, InterestAnalysis } from "@/types";
 import {
   Activity,
   FileText,
@@ -26,6 +26,10 @@ import {
   Cpu,
   BookOpen,
   Loader2,
+  Heart,
+  Plus,
+  CheckCircle,
+  Search,
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -81,6 +85,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [interest, setInterest] = useState<InterestAnalysis | null>(null);
+  const [interestLoading, setInterestLoading] = useState(false);
+  const [subscribedNames, setSubscribedNames] = useState<Set<string>>(new Set());
+
   async function loadData() {
     setLoading(true);
     setError(null);
@@ -103,6 +111,27 @@ export default function Dashboard() {
   }
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    interestApi.suggestions().then(setInterest).catch(() => {});
+  }, []);
+
+  const handleAnalyze = async () => {
+    setInterestLoading(true);
+    try {
+      await interestApi.analyze();
+      await new Promise((r) => setTimeout(r, 3000));
+      const result = await interestApi.suggestions();
+      setInterest(result);
+    } catch {} finally { setInterestLoading(false); }
+  };
+
+  const handleSubscribe = async (name: string, query: string) => {
+    try {
+      await interestApi.subscribe(name, query);
+      setSubscribedNames((prev) => new Set(prev).add(name));
+    } catch {}
+  };
 
   if (loading) return <StatCardSkeleton />;
   if (error) {
@@ -367,6 +396,80 @@ export default function Dashboard() {
               </div>
             </SectionCard>
           )}
+
+          {/* 兴趣发现 */}
+          <SectionCard title="兴趣发现" icon={<Heart className="h-4 w-4 text-error" />}>
+            {interest && interest.suggestions.length > 0 ? (
+              <div className="space-y-3">
+                {interest.analyzed_at && (
+                  <p className="text-[10px] text-ink-tertiary">
+                    基于 {interest.favorite_count} 篇收藏 · {new Date(interest.analyzed_at).toLocaleDateString("zh-CN")}
+                  </p>
+                )}
+                {interest.suggestions.slice(0, 4).map((s) => {
+                  const subscribed = subscribedNames.has(s.name);
+                  return (
+                    <div key={s.name} className="rounded-xl bg-page p-3">
+                      <div className="mb-1.5 flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-ink">{s.name}</p>
+                          <p className="mt-0.5 line-clamp-2 text-[10px] leading-relaxed text-ink-secondary">{s.reason}</p>
+                        </div>
+                        <button
+                          onClick={() => handleSubscribe(s.name, s.query)}
+                          disabled={subscribed}
+                          className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                            subscribed
+                              ? "bg-success-light text-success"
+                              : "bg-primary/10 text-primary hover:bg-primary/20"
+                          }`}
+                        >
+                          {subscribed ? <><CheckCircle className="mr-0.5 inline h-3 w-3" />已订阅</> : <><Plus className="mr-0.5 inline h-3 w-3" />订阅</>}
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md bg-border-light px-1.5 py-0.5 text-[9px] font-mono text-ink-tertiary">{s.query}</span>
+                        <span className="text-[9px] text-ink-tertiary">{(s.confidence * 100).toFixed(0)}%</span>
+                      </div>
+                      {s.preview_papers.length > 0 && (
+                        <div className="mt-1.5 space-y-0.5">
+                          {s.preview_papers.slice(0, 2).map((p) => (
+                            <p key={p.arxiv_id} className="truncate text-[10px] text-ink-tertiary">
+                              <Search className="mr-0.5 inline h-2.5 w-2.5" />{p.title}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <button
+                  onClick={handleAnalyze}
+                  disabled={interestLoading}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-page py-2 text-[11px] font-medium text-ink-secondary transition-colors hover:bg-hover"
+                >
+                  {interestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  重新分析
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 py-4 text-center">
+                <Heart className="mx-auto h-8 w-8 text-ink-tertiary/30" />
+                <div>
+                  <p className="text-xs text-ink-tertiary">收藏论文后，系统会分析你的兴趣</p>
+                  <p className="mt-0.5 text-[10px] text-ink-tertiary">并推荐新的研究方向订阅</p>
+                </div>
+                <button
+                  onClick={handleAnalyze}
+                  disabled={interestLoading}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary/10 px-4 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                >
+                  {interestLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                  分析我的收藏
+                </button>
+              </div>
+            )}
+          </SectionCard>
         </div>
       </div>
 

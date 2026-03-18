@@ -12,14 +12,15 @@ import { PaperDetailSkeleton } from "@/components/Skeleton";
 const Markdown = lazy(() => import("@/components/Markdown"));
 const PdfReader = lazy(() => import("@/components/PdfReader"));
 import { useToast } from "@/contexts/ToastContext";
-import { paperApi, pipelineApi } from "@/services/api";
-import type { Paper, SkimReport, DeepDiveReport, ReasoningChainResult, FigureAnalysisItem } from "@/types";
+import { paperApi, pipelineApi, notesApi } from "@/services/api";
+import type { Paper, SkimReport, DeepDiveReport, ReasoningChainResult, FigureAnalysisItem, Note } from "@/types";
 import {
   ArrowLeft, ExternalLink, Eye, BookOpen, Cpu, Star, AlertTriangle,
   CheckCircle2, Lightbulb, FlaskConical, Microscope, Shield, Sparkles,
   Link2, Tag, Folder, Heart, Image as ImageIcon, BarChart3, Table2,
   FileCode2, Brain, ChevronDown, ChevronRight, TrendingUp, Target,
   ThumbsUp, ThumbsDown, Zap, FileSearch, X, Loader2, Check, Download,
+  StickyNote, Pencil, Trash2, BookmarkPlus,
 } from "lucide-react";
 
 /* ================================================================
@@ -148,6 +149,11 @@ export default function PaperDetail() {
   const [reasoning, setReasoning] = useState<ReasoningChainResult | null>(null);
   const [reasoningLoading, setReasoningLoading] = useState(false);
 
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [noteInput, setNoteInput] = useState("");
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+
   const [readerOpen, setReaderOpen] = useState(false);
   const [reportTab, setReportTab] = useState("skim");
 
@@ -171,10 +177,48 @@ export default function PaperDetail() {
         if (rc) setReasoning(rc);
         if (p.deep_report) setReportTab("deep");
         else if (p.skim_report) setReportTab("skim");
+        if (!p.user_viewed) paperApi.markViewed(id).catch(() => {});
       })
       .catch(() => { toast("error", "加载论文详情失败"); })
       .finally(() => setLoading(false));
+
+    notesApi.listByPaper(id).then((r) => setNotes(r.items)).catch(() => {});
   }, [id, toast]);
+
+  const loadNotes = useCallback(() => {
+    if (!id) return;
+    notesApi.listByPaper(id).then((r) => setNotes(r.items)).catch(() => {});
+  }, [id]);
+
+  const handleAddNote = async () => {
+    if (!id || !noteInput.trim()) return;
+    try {
+      await notesApi.createPaperNote(id, { note_type: "idea", content: noteInput.trim() });
+      setNoteInput("");
+      loadNotes();
+    } catch { toast("error", "保存笔记失败"); }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await notesApi.delete(noteId);
+      loadNotes();
+    } catch { toast("error", "删除笔记失败"); }
+  };
+
+  const handleStartEdit = (note: Note) => {
+    setEditingNote(note.id);
+    setEditContent(note.content);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingNote) return;
+    try {
+      await notesApi.update(editingNote, editContent);
+      setEditingNote(null);
+      loadNotes();
+    } catch { toast("error", "更新笔记失败"); }
+  };
 
   const handleSkim = async () => {
     if (!id) return;
@@ -571,6 +615,7 @@ export default function PaperDetail() {
             { id: "figures", label: <TabLabel label="图表" status={figureStatus} /> },
             { id: "reasoning", label: <TabLabel label="推理链" status={reasoningStatus} /> },
             { id: "similar", label: <TabLabel label="相似" status={similarStatus} /> },
+            { id: "notes", label: <span className="flex items-center gap-1"><StickyNote className="h-3.5 w-3.5" />笔记{notes.length > 0 && <span className="ml-0.5 text-[10px] opacity-60">({notes.length})</span>}</span> },
           ]}
           active={reportTab}
           onChange={setReportTab}
@@ -729,6 +774,96 @@ export default function PaperDetail() {
                 </Card>
               ) : (
                 <EmptyReport icon={<Link2 className="h-8 w-8" />} label={embedDone ? "点击「相似论文」按钮查找" : "请先执行「向量嵌入」，再查找相似论文"} />
+              )}
+            </div>
+          )}
+
+          {/* Tab: 笔记 */}
+          {reportTab === "notes" && (
+            <div className="animate-fade-in space-y-4">
+              {/* 添加想法 */}
+              <Card className="rounded-2xl">
+                <div className="flex gap-2">
+                  <textarea
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    placeholder="写下你的想法..."
+                    rows={2}
+                    className="flex-1 resize-none rounded-xl border border-border bg-page px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary focus:outline-none"
+                    onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAddNote(); }}
+                  />
+                  <button
+                    onClick={handleAddNote}
+                    disabled={!noteInput.trim()}
+                    className="shrink-0 self-end rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-40"
+                  >
+                    <BookmarkPlus className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[10px] text-ink-tertiary">Ctrl+Enter 快速保存</p>
+              </Card>
+
+              {/* 笔记列表 */}
+              {notes.length === 0 ? (
+                <EmptyReport icon={<StickyNote className="h-8 w-8" />} label="还没有笔记，写下你的第一个想法吧" />
+              ) : (
+                <div className="space-y-2">
+                  {notes.map((note) => (
+                    <Card key={note.id} className="rounded-2xl">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1.5 flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                              note.note_type === "highlight"
+                                ? "bg-amber-500/10 text-amber-600"
+                                : "bg-primary/10 text-primary"
+                            }`}>
+                              {note.note_type === "highlight" ? "高亮" : "想法"}
+                            </span>
+                            {note.page_number != null && (
+                              <span className="text-[10px] text-ink-tertiary">P{note.page_number}</span>
+                            )}
+                            <span className="text-[10px] text-ink-tertiary">
+                              {new Date(note.created_at).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          {note.source_text && (
+                            <div className="mb-2 rounded-lg border-l-2 border-amber-400 bg-amber-500/5 px-3 py-1.5 text-xs leading-relaxed text-ink-secondary">
+                              {note.source_text}
+                            </div>
+                          )}
+                          {editingNote === note.id ? (
+                            <div className="flex gap-2">
+                              <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                rows={2}
+                                className="flex-1 resize-none rounded-lg border border-primary bg-page px-2 py-1 text-sm text-ink focus:outline-none"
+                                autoFocus
+                              />
+                              <div className="flex flex-col gap-1">
+                                <button onClick={handleSaveEdit} className="rounded-lg bg-primary px-2 py-1 text-xs text-white hover:bg-primary/90">保存</button>
+                                <button onClick={() => setEditingNote(null)} className="rounded-lg bg-page px-2 py-1 text-xs text-ink-tertiary hover:bg-hover">取消</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{note.content}</p>
+                          )}
+                        </div>
+                        {editingNote !== note.id && (
+                          <div className="flex shrink-0 gap-1">
+                            <button onClick={() => handleStartEdit(note)} className="rounded-lg p-1.5 text-ink-tertiary transition-colors hover:bg-hover hover:text-ink">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => handleDeleteNote(note.id)} className="rounded-lg p-1.5 text-ink-tertiary transition-colors hover:bg-red-500/10 hover:text-red-500">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               )}
             </div>
           )}

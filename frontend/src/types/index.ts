@@ -96,6 +96,7 @@ export interface Paper {
   metadata?: Record<string, unknown>;
   has_embedding?: boolean;
   favorited?: boolean;
+  user_viewed?: boolean;
   categories?: string[];
   keywords?: string[];
   authors?: string[];
@@ -602,6 +603,53 @@ export interface CostMetrics {
   total_cost_usd: number;
   by_stage: CostStage[];
   by_model: CostModel[];
+}
+
+/* ========== 笔记 ========== */
+export type NoteType = "highlight" | "idea" | "topic_note";
+
+export interface Note {
+  id: string;
+  paper_id: string | null;
+  topic_id: string | null;
+  note_type: NoteType;
+  content: string;
+  source_text: string;
+  page_number: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TopicNotesResponse {
+  topic_notes: Note[];
+  paper_groups: {
+    paper_id: string;
+    paper_title: string;
+    notes: Note[];
+  }[];
+}
+
+/* ========== 兴趣发现 ========== */
+export interface InterestPreviewPaper {
+  title: string;
+  arxiv_id: string;
+  abstract: string;
+}
+
+export interface InterestSuggestion {
+  name: string;
+  query: string;
+  reason: string;
+  confidence: number;
+  preview_papers: InterestPreviewPaper[];
+}
+
+export interface InterestAnalysis {
+  interests: string[];
+  suggestions: InterestSuggestion[];
+  analyzed_at: string | null;
+  favorite_count: number;
+  content_id?: string;
 }
 
 /* ========== 引用同步 ========== */

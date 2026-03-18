@@ -4,20 +4,50 @@ LLM Prompt 模板
 """
 
 
+READER_INTERESTS = (
+    "reinforcement learning, RL, reward model, RLHF, policy optimization; "
+    "LLM agents, tool use, multi-agent; "
+    "benchmarks, evaluation, leaderboard; "
+    "world models, dynamics model, predictive model; "
+    "agentic reasoning, chain-of-thought, planning, self-reflection; "
+    "LLM post-training, alignment, DPO, GRPO, instruction tuning; "
+    "in-context learning, ICL, few-shot, prompt"
+)
+
+
 def build_skim_prompt(title: str, abstract: str) -> str:
     return (
-        "你是科研助手。请根据标题和摘要输出严格 JSON：\n"
-        '{"one_liner":"一句话中文总结", '
-        '"innovations":["创新点1","创新点2","创新点3"], '
-        '"keywords":["keyword1","keyword2","keyword3","keyword4","keyword5"], '
-        '"title_zh":"中文标题翻译", '
-        '"abstract_zh":"中文摘要翻译（完整翻译，不要缩写）", '
-        '"relevance_score":0.0}\n'
-        "要求：\n"
-        "- one_liner、innovations、title_zh、abstract_zh 必须使用中文\n"
-        "- relevance_score 在 0 到 1 之间\n"
-        "- keywords 提取 3~8 个最具代表性的英文学术关键词\n"
-        f"标题: {title}\n摘要: {abstract}\n"
+        "You are a research assistant serving a PhD researcher. "
+        "Based on the title and abstract, output STRICT JSON with the following structure:\n\n"
+        "```json\n"
+        "{\n"
+        '  "one_liner": "One-sentence Chinese summary of the paper",\n'
+        '  "problem": "What problem does this paper address? (Chinese, 2-3 sentences)",\n'
+        '  "method": "What method/approach is proposed? (Chinese, 3-5 sentences, be specific about the technical approach)",\n'
+        '  "contributions": ["Contribution 1 (Chinese)", "Contribution 2", "Contribution 3"],\n'
+        '  "benchmarks": ["benchmark/dataset name 1", "benchmark/dataset name 2"],\n'
+        '  "results_summary": "Key experimental results — what metrics improved by how much? (Chinese, 3-5 sentences)",\n'
+        '  "conclusions": "Main conclusions and takeaways (Chinese, 2-3 sentences)",\n'
+        '  "innovations": ["Technical innovation 1 (Chinese)", "Innovation 2", "Innovation 3"],\n'
+        '  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],\n'
+        '  "title_zh": "Chinese translation of the title",\n'
+        '  "abstract_zh": "Complete Chinese translation of the abstract (do NOT abbreviate)",\n'
+        '  "relevance_score": 0.0\n'
+        "}\n```\n\n"
+        "Requirements:\n"
+        "- one_liner, problem, method, contributions, results_summary, conclusions, innovations, "
+        "title_zh, abstract_zh MUST be in Chinese\n"
+        "- benchmarks: extract exact dataset/benchmark names mentioned (keep original English names)\n"
+        "- results_summary: include concrete numbers (accuracy, F1, BLEU, etc.) when available in the abstract\n"
+        "- keywords: 3-8 representative English academic keywords\n"
+        "- relevance_score: 0 to 1 based on match with reader's interests:\n"
+        "  0.8-1.0 = directly relevant, high impact\n"
+        "  0.6-0.8 = clearly in reader's research area\n"
+        "  0.4-0.6 = related methods or inspiring\n"
+        "  0.2-0.4 = different area but valuable\n"
+        "  0.0-0.2 = irrelevant\n"
+        f"- Reader's research interests: {READER_INTERESTS}\n\n"
+        f"Title: {title}\nAbstract: {abstract}\n"
     )
 
 
@@ -25,14 +55,50 @@ def build_deep_prompt(
     title: str, extracted_pages: str
 ) -> str:
     return (
-        "你是审稿专家。请用中文输出严格 JSON：\n"
-        '{"method_summary":"方法总结", '
-        '"experiments_summary":"实验总结", '
-        '"ablation_summary":"消融实验总结", '
-        '"reviewer_risks":["风险点1","风险点2"]}\n'
-        "要求：所有字段必须使用中文回答。\n"
-        f"论文标题: {title}\n"
-        f"页面内容摘要: {extracted_pages}\n"
+        "You are a senior reviewer and research analyst. "
+        "Perform a thorough deep-read of this paper and output STRICT JSON:\n\n"
+        "```json\n"
+        "{\n"
+        '  "problem_and_motivation": "What is the core problem? Why is it important? '
+        'What gap in prior work motivates this paper? (Chinese, 400-600 chars)",\n\n'
+        '  "method_architecture": "Detailed description of the proposed method/model architecture. '
+        "Include: (1) overall framework, (2) key components and how they interact, "
+        '(3) loss functions or training objectives, (4) any novel operators or modules. (Chinese, 600-1000 chars)",\n\n'
+        '  "key_figures": [\n'
+        "    {\n"
+        '      "figure_id": "Fig.1 / Table 1 / Algorithm 1",\n'
+        '      "type": "architecture | pseudocode | result_table | result_plot | ablation | other",\n'
+        '      "description": "Detailed description of what the figure/table shows (Chinese, 100-200 chars)"\n'
+        "    }\n"
+        "  ],\n\n"
+        '  "pseudocode": "If the paper contains pseudocode or algorithmic steps, '
+        'reproduce or summarize them here. Otherwise empty string. (plain text, keep English)",\n\n'
+        '  "experiment_setup": "Datasets used, baselines compared against, '
+        'evaluation metrics, implementation details (Chinese, 300-500 chars)",\n\n'
+        '  "main_results": "Key quantitative results — report specific numbers from tables. '
+        "Which method wins on which metric? How large are the improvements? "
+        '(Chinese, 400-600 chars)",\n\n'
+        '  "ablation_study": "Summarize ablation experiments: which components matter most? '
+        'What happens when you remove X? Include key numbers. (Chinese, 300-500 chars)",\n\n'
+        '  "comparison_with_prior_work": "How does this method differ from the closest prior work? '
+        "What are the key architectural/methodological differences? "
+        '(Chinese, 300-500 chars)",\n\n'
+        '  "limitations": ["Limitation 1 (Chinese)", "Limitation 2"],\n\n'
+        '  "future_research": [\n'
+        '    "Concrete future research idea 1 inspired by this paper (Chinese, 1-2 sentences)",\n'
+        '    "Future idea 2",\n'
+        '    "Future idea 3"\n'
+        "  ],\n\n"
+        '  "reviewer_risks": ["Potential concern 1 (Chinese)", "Concern 2"]\n'
+        "}\n```\n\n"
+        "Requirements:\n"
+        "- ALL text fields in Chinese except pseudocode (keep original English)\n"
+        "- key_figures: identify ALL important figures, tables, and algorithms in the paper\n"
+        "- future_research: generate 2-4 specific, actionable research ideas (not generic)\n"
+        "- Be concrete: cite specific numbers, table entries, figure references\n"
+        "- For method_architecture: describe as if explaining to a researcher who will re-implement it\n\n"
+        f"Paper title: {title}\n\n"
+        f"Extracted content:\n{extracted_pages}\n"
     )
 
 
@@ -462,4 +528,34 @@ def build_wiki_section_prompt(
         f"## 本章节要点:\n{points_text}\n\n"
         f"## 需引用的来源: {refs_text}\n\n"
         f"## 全部资料来源:\n{all_sources_text}\n"
+    )
+
+
+def build_interest_analysis_prompt(favorites_info: str, existing_topics: str) -> str:
+    return (
+        "You are a research interest analyst. The user has favorited a set of academic papers. "
+        "Analyze their research interests and suggest NEW topic subscriptions that are NOT already covered "
+        "by their existing subscriptions.\n\n"
+        "Requirements:\n"
+        "1. Identify 3-5 latent interest themes from the favorited papers\n"
+        "2. For each theme, suggest an arXiv subscription topic\n"
+        "3. Each suggestion must use valid arXiv API query syntax (abs:, ti:, cat:, AND/OR)\n"
+        "4. Do NOT duplicate or overlap significantly with existing topics\n"
+        "5. Focus on specific sub-directions the user seems interested in but hasn't subscribed to\n"
+        "6. Give a confidence score (0-1) based on how strongly the favorites signal this interest\n\n"
+        "Output STRICT JSON:\n"
+        '```json\n'
+        '{\n'
+        '  "interests": ["interest theme 1 (Chinese)", "interest theme 2", ...],\n'
+        '  "suggestions": [\n'
+        '    {\n'
+        '      "name": "Topic Name (Chinese, concise)",\n'
+        '      "query": "abs:keyword1 AND abs:keyword2",\n'
+        '      "reason": "Why this is recommended based on favorites (Chinese, 1-2 sentences)",\n'
+        '      "confidence": 0.85\n'
+        '    }\n'
+        '  ]\n'
+        '}\n```\n\n'
+        f"## Favorited Papers:\n{favorites_info}\n\n"
+        f"## Existing Topic Subscriptions:\n{existing_topics}\n"
     )

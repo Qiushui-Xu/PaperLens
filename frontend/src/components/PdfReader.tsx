@@ -6,7 +6,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { paperApi } from "@/services/api";
+import { paperApi, notesApi } from "@/services/api";
 import Markdown from "@/components/Markdown";
 import {
   X,
@@ -24,6 +24,7 @@ import {
   Sparkles,
   Copy,
   Check,
+  BookmarkPlus,
 } from "lucide-react";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -59,6 +60,33 @@ export default function PdfReader({ paperId, paperTitle, paperArxivId, onClose }
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResults, setAiResults] = useState<AiResult[]>([]);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  /* 保存到笔记本 */
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [notePopup, setNotePopup] = useState(false);
+  const [noteComment, setNoteComment] = useState("");
+  const [noteSaved, setNoteSaved] = useState(false);
+
+  const handleSaveToNotebook = async () => {
+    if (!selectedText.trim()) return;
+    setNoteSaving(true);
+    try {
+      await notesApi.createPaperNote(paperId, {
+        note_type: "highlight",
+        content: noteComment.trim() || "",
+        source_text: selectedText,
+        page_number: currentPage,
+      });
+      setNoteSaved(true);
+      setNotePopup(false);
+      setNoteComment("");
+      setTimeout(() => setNoteSaved(false), 2000);
+    } catch {
+      // silently fail
+    } finally {
+      setNoteSaving(false);
+    }
+  };
 
   /* 页面输入 */
   const [pageInput, setPageInput] = useState("");
@@ -440,6 +468,48 @@ export default function PdfReader({ paperId, paperTitle, paperArxivId, onClose }
                 >
                   <FileText className="h-3.5 w-3.5" /> 总结
                 </button>
+              </div>
+              {/* 保存到笔记本 */}
+              <div className="mt-2">
+                {notePopup ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={noteComment}
+                      onChange={(e) => setNoteComment(e.target.value)}
+                      placeholder="添加备注（可选）..."
+                      rows={2}
+                      className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80 placeholder:text-white/30 focus:border-purple-400 focus:outline-none"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveToNotebook}
+                        disabled={noteSaving}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-purple-500/20 py-1.5 text-xs text-purple-300 transition-colors hover:bg-purple-500/30 disabled:opacity-50"
+                      >
+                        {noteSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookmarkPlus className="h-3.5 w-3.5" />}
+                        保存
+                      </button>
+                      <button
+                        onClick={() => { setNotePopup(false); setNoteComment(""); }}
+                        className="rounded-lg px-3 py-1.5 text-xs text-white/40 transition-colors hover:text-white/60"
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => noteSaved ? null : setNotePopup(true)}
+                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs transition-colors ${
+                      noteSaved
+                        ? "bg-green-500/20 text-green-300"
+                        : "bg-purple-500/10 text-purple-300 hover:bg-purple-500/20"
+                    }`}
+                  >
+                    {noteSaved ? <><Check className="h-3.5 w-3.5" /> 已保存</> : <><BookmarkPlus className="h-3.5 w-3.5" /> 保存到笔记本</>}
+                  </button>
+                )}
               </div>
             </div>
           )}

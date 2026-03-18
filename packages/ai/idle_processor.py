@@ -238,9 +238,13 @@ class IdleProcessor:
                         failed += 1
                         continue
 
+                    from uuid import UUID as _UUID
+
+                    pid_uuid = _UUID(paper_id) if isinstance(paper_id, str) else paper_id
+
                     # 嵌入
                     try:
-                        pipelines.embed_paper(str(paper_id))
+                        pipelines.embed_paper(pid_uuid)
                         logger.info("✅ 嵌入完成：%s", title[:40])
                     except Exception as e:
                         logger.warning("嵌入失败：%s - %s", title[:40], e)
@@ -254,7 +258,7 @@ class IdleProcessor:
 
                     # 粗读
                     try:
-                        result = pipelines.skim(str(paper_id))
+                        result = pipelines.skim(pid_uuid)
                         score = result.relevance_score if result else None
                         logger.info("✅ 粗读完成：%s (分数=%.2f)", title[:40], score or 0)
                     except Exception as e:
