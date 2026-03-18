@@ -10,7 +10,11 @@
 
 > Your personal research lens — 根据你的兴趣，自动发现、阅读、总结学术论文。
 
-PaperLens 是一个 AI 驱动的个性化学术论文追踪平台。订阅你感兴趣的研究方向，系统自动从 arXiv 抓取最新论文，用 LLM 进行结构化粗读与精读，生成每日简报，并基于你的收藏行为持续发现新的兴趣方向。
+PaperLens 是一个 AI 驱动的个性化学术论文追踪平台。
+
+**致谢**：本项目基于 [PaperMind](https://github.com/Color2333/PaperMind) 开发，感谢 [Color2333](https://github.com/Color2333) 的开源贡献。
+
+订阅你感兴趣的研究方向，系统自动从 arXiv 抓取最新论文，用 LLM 进行结构化粗读与精读，生成每日简报，并基于你的收藏行为持续发现新的兴趣方向。
 
 ---
 
