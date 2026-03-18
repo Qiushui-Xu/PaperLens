@@ -371,6 +371,7 @@ export const generatedApi = {
 
 /* ========== 任务 ========== */
 export const jobApi = {
+  ingestRun: () => post<Record<string, unknown>>("/jobs/ingest/run-once"),
   dailyRun: () => post<Record<string, unknown>>("/jobs/daily/run-once"),
   weeklyGraphRun: () => post<Record<string, unknown>>("/jobs/graph/weekly-run-once"),
   batchProcessUnread: (maxPapers = 50) =>

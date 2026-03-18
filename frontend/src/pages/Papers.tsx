@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { Button, Badge, Empty, Spinner, Modal, Input } from "@/components/ui";
 import { PaperListSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/contexts/ToastContext";
-import { paperApi, ingestApi, topicApi, pipelineApi, actionApi, tasksApi, notesApi, interestApi } from "@/services/api";
+import { paperApi, ingestApi, topicApi, pipelineApi, actionApi, tasksApi, notesApi, interestApi, jobApi } from "@/services/api";
 import { formatDate, truncate } from "@/lib/utils";
 import type { Paper, Topic, FolderStats, CollectionAction, Note, TopicNotesResponse, InterestAnalysis } from "@/types";
 import {
@@ -265,6 +265,22 @@ export default function Papers() {
   useEffect(() => { loadFolderStats(); }, [loadFolderStats]);
   useEffect(() => { loadPapers(); }, [loadPapers]);
 
+  /* 无论文时自动触发抓取（仅一次） */
+  const hasTriggeredEmptyIngest = useRef(false);
+  useEffect(() => {
+    if (
+      !loading &&
+      total === 0 &&
+      !searchTerm &&
+      activeFolder === "all" &&
+      !activeActionId &&
+      !hasTriggeredEmptyIngest.current
+    ) {
+      hasTriggeredEmptyIngest.current = true;
+      triggerIngest();
+    }
+  }, [loading, total, searchTerm, activeFolder, activeActionId, triggerIngest]);
+
   /* 构建文件夹列表 */
   const folders = useMemo((): FolderItem[] => {
     if (!folderStats) return [];
@@ -388,9 +404,23 @@ export default function Papers() {
     return folders.find((f) => f.id === activeFolder)?.name || "全部论文";
   }, [activeFolder, activeDate, folders]);
 
+  const triggerIngest = useCallback(async () => {
+    try {
+      await jobApi.dailyRun();
+      toast("info", "正在执行完整流程（抓取+粗读+精读+简报），请稍候...");
+      // 完整流程在后台执行，稍后刷新列表（抓取+粗读+精读+简报需较长时间）
+      setTimeout(() => {
+        loadFolderStats();
+        loadPapers();
+      }, 10000);
+    } catch {
+      toast("error", "触发抓取失败");
+    }
+  }, [toast, loadFolderStats, loadPapers]);
+
   const refresh = useCallback(async () => {
-    await Promise.all([loadFolderStats(), loadPapers()]);
-  }, [loadFolderStats, loadPapers]);
+    await triggerIngest();
+  }, [triggerIngest]);
 
   /* 分页导航 */
   const goPage = useCallback((p: number) => {
@@ -724,7 +754,14 @@ export default function Papers() {
                 icon={<FileText className="h-14 w-14" />}
                 title={searchTerm ? "没有匹配的论文" : "该文件夹暂无论文"}
                 description={searchTerm ? "尝试不同的关键词" : "从 ArXiv 摄入论文开始你的研究之旅"}
-                action={!searchTerm ? <Button size="sm" onClick={() => setIngestOpen(true)}>开始摄入</Button> : undefined}
+                action={
+                  !searchTerm ? (
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={triggerIngest}>自动抓取</Button>
+                      <Button size="sm" variant="secondary" onClick={() => setIngestOpen(true)}>手动搜索</Button>
+                    </div>
+                  ) : undefined
+                }
               />
             </div>
           ) : (

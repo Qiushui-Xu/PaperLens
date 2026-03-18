@@ -19,6 +19,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.post("/jobs/ingest/run-once")
+def run_ingest_once() -> dict:
+    """仅抓取论文（订阅主题 + HF 热榜）- 后台执行，不生成简报"""
+
+    def _fn(progress_callback=None):
+        if progress_callback:
+            progress_callback("正在执行订阅收集...", 10, 100)
+        return run_daily_ingest()
+
+    task_id = global_tracker.submit("ingest_job", "📥 论文抓取", _fn)
+    return {"task_id": task_id, "message": "论文抓取已启动", "status": "running"}
+
+
 @router.post("/jobs/daily/run-once")
 def run_daily_once() -> dict:
     """每日任务（抓取+简报）- 后台执行"""
