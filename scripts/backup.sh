@@ -1,5 +1,5 @@
 #!/bin/bash
-# PaperMind 数据备份脚本
+# PaperLens 数据备份脚本
 # @author Color2333
 #
 # 用法: 添加到 crontab:

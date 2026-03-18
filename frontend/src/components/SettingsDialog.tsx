@@ -1178,7 +1178,7 @@ function AddEmailConfigInline({ onCreated, onCancel }: { onCreated: () => void; 
     smtp_port: 587,
     smtp_use_tls: true,
     sender_email: "",
-    sender_name: "PaperMind",
+    sender_name: "PaperLens",
     username: "",
     password: "",
   });
@@ -1307,7 +1307,7 @@ function EditEmailConfigInline({
     smtp_port: config.smtp_port,
     smtp_use_tls: config.smtp_use_tls,
     sender_email: config.sender_email,
-    sender_name: config.sender_name || "PaperMind",
+    sender_name: config.sender_name || "PaperLens",
     username: config.username,
     password: "",
   });

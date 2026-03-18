@@ -1,5 +1,5 @@
 /**
- * PaperMind - 入口文件
+ * PaperLens - 入口文件
  * @author Color2333
  */
 import { StrictMode } from "react";

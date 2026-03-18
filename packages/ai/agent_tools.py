@@ -1264,7 +1264,7 @@ def _generate_daily_brief(recipient: str = ""):
     if clean_recipient:
         yield ToolProgress(message="正在发送邮件...", current=4, total=4)
         email_sent = notifier.send_email_html(
-            clean_recipient, "PaperMind Daily Brief", html_content
+            clean_recipient, "PaperLens Daily Brief", html_content
         )
 
     db_saved = False

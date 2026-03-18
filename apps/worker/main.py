@@ -1,5 +1,5 @@
 """
-PaperMind Worker - 智能定时任务调度（UTC 时间 + 闲时处理）
+PaperLens Worker - 智能定时任务调度（UTC 时间 + 闲时处理）
 @author Color2333
 @author Color2333
 """

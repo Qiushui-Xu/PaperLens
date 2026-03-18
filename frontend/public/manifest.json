@@ -1,6 +1,6 @@
 {
-  "name": "PaperMind",
-  "short_name": "PaperMind",
+  "name": "PaperLens",
+  "short_name": "PaperLens",
   "description": "AI 驱动的学术论文研究平台",
   "start_url": "/",
   "display": "standalone",

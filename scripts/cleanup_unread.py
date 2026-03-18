@@ -11,7 +11,7 @@
     python scripts/cleanup_unread.py --limit 50 --concurrency 5
 
     # 添加到 crontab（每天 UTC 14 点执行，北京时间 22 点）
-    0 14 * * * cd /path/to/PaperMind && /path/to/venv/bin/python scripts/cleanup_unread.py --limit 30
+    0 14 * * * cd /path/to/PaperLens && /path/to/venv/bin/python scripts/cleanup_unread.py --limit 30
 """
 
 from __future__ import annotations
@@ -132,7 +132,7 @@ def main():
   python scripts/cleanup_unread.py --limit 50 --concurrency 5
   
   # 添加到 crontab（每天 UTC 14 点执行）
-  0 14 * * * cd /path/to/PaperMind && /path/to/venv/bin/python scripts/cleanup_unread.py --limit 30
+  0 14 * * * cd /path/to/PaperLens && /path/to/venv/bin/python scripts/cleanup_unread.py --limit 30
         """,
     )
     parser.add_argument("--limit", type=int, default=20, help="每次处理的论文数量 (默认 20)")
@@ -143,7 +143,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 70)
-    print("🚀 PaperMind 未读论文批量处理器")
+    print("🚀 PaperLens 未读论文批量处理器")
     print("=" * 70)
     print()
 

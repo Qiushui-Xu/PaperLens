@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PaperMind Desktop — 一键构建脚本 (macOS)
+# PaperLens Desktop — 一键构建脚本 (macOS)
 # 1. PyInstaller 打包 Python 后端
 # 2. 安装 Tauri 前端依赖
 # 3. Tauri build 生成 .dmg
@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ARCH="${1:-$(uname -m)}"
 
 echo "========================================"
-echo " PaperMind Desktop Build"
+echo " PaperLens Desktop Build"
 echo " Platform: macOS ($ARCH)"
 echo " Root: $ROOT"
 echo "========================================"

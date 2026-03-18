@@ -8,6 +8,7 @@ import { Button, Badge, Empty, Spinner, Modal, Input } from "@/components/ui";
 import { PaperListSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/contexts/ToastContext";
 import { paperApi, ingestApi, topicApi, pipelineApi, actionApi, tasksApi, notesApi, interestApi, jobApi } from "@/services/api";
+import { useGlobalTasks } from "@/contexts/GlobalTaskContext";
 import { formatDate, truncate } from "@/lib/utils";
 import type { Paper, Topic, FolderStats, CollectionAction, Note, TopicNotesResponse, InterestAnalysis } from "@/types";
 import {
@@ -89,6 +90,7 @@ function formatDateLabel(dateStr: string): string {
 export default function Papers() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { tasks } = useGlobalTasks();
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -262,6 +264,31 @@ export default function Papers() {
     } catch { toast("error", "加载论文列表失败"); } finally { setLoading(false); }
   }, [activeFolder, activeDate, activeActionId, page, pageSize, debouncedSearch, statusFilter, sortBy, sortOrder, toast]);
 
+  const triggerIngest = useCallback(async () => {
+    try {
+      await jobApi.dailyRun();
+      toast("info", "正在执行完整流程（抓取+粗读+精读+简报），完成后自动刷新...");
+    } catch {
+      toast("error", "触发抓取失败");
+    }
+  }, [toast]);
+
+  /* 当全局任务完成时自动刷新论文列表 */
+  const prevTasksRef = useRef<Record<string, boolean>>({});
+  useEffect(() => {
+    let shouldRefresh = false;
+    for (const t of tasks) {
+      if (prevTasksRef.current[t.task_id] === false && t.finished && t.success) {
+        shouldRefresh = true;
+      }
+      prevTasksRef.current[t.task_id] = t.finished;
+    }
+    if (shouldRefresh) {
+      loadFolderStats();
+      loadPapers();
+    }
+  }, [tasks, loadFolderStats, loadPapers]);
+
   useEffect(() => { loadFolderStats(); }, [loadFolderStats]);
   useEffect(() => { loadPapers(); }, [loadPapers]);
 
@@ -403,20 +430,6 @@ export default function Papers() {
     if (activeDate) return formatDateLabel(activeDate) + " 收录";
     return folders.find((f) => f.id === activeFolder)?.name || "全部论文";
   }, [activeFolder, activeDate, folders]);
-
-  const triggerIngest = useCallback(async () => {
-    try {
-      await jobApi.dailyRun();
-      toast("info", "正在执行完整流程（抓取+粗读+精读+简报），请稍候...");
-      // 完整流程在后台执行，稍后刷新列表（抓取+粗读+精读+简报需较长时间）
-      setTimeout(() => {
-        loadFolderStats();
-        loadPapers();
-      }, 10000);
-    } catch {
-      toast("error", "触发抓取失败");
-    }
-  }, [toast, loadFolderStats, loadPapers]);
 
   const refresh = useCallback(async () => {
     await triggerIngest();

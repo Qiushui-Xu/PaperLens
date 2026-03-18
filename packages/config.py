@@ -18,7 +18,7 @@ def _resolve_env_file() -> str:
 
 class Settings(BaseSettings):
     app_env: str = "dev"
-    app_name: str = "PaperMind API"
+    app_name: str = "PaperLens API"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 

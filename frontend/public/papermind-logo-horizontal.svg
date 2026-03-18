@@ -26,5 +26,5 @@
     <path d="M 50 65 C 70 65, 75 50, 70 40 C 65 30, 55 25, 50 35" class="line" />
   </g>
 
-  <text x="64" y="42" class="text">PaperMind</text>
+  <text x="64" y="42" class="text">PaperLens</text>
 </svg>

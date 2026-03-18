@@ -384,7 +384,7 @@ const EmptyState = memo(function EmptyState({ onSelect }: { onSelect: (p: string
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
         <Sparkles className="h-8 w-8 text-primary" />
       </div>
-      <h2 className="mb-1 text-2xl font-bold text-ink">PaperMind Agent</h2>
+      <h2 className="mb-1 text-2xl font-bold text-ink">PaperLens Agent</h2>
       <p className="mb-6 max-w-lg text-center text-sm leading-relaxed text-ink-secondary">
         告诉我你的研究需求，我会自动规划执行步骤：搜索论文、下载、分析、生成综述。
       </p>

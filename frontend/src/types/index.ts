@@ -1,5 +1,5 @@
 /**
- * PaperMind - TypeScript 类型定义
+ * PaperLens - TypeScript 类型定义
  * @author Color2333
  */
 

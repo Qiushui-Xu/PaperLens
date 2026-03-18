@@ -109,7 +109,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 60)
-    print("🚀 PaperMind 批量论文处理器")
+    print("🚀 PaperLens 批量论文处理器")
     print("=" * 60)
     print()
 

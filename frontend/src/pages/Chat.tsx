@@ -112,7 +112,7 @@ export default function Chat() {
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
             <h2 className="mt-4 text-lg font-semibold text-ink">
-              PaperMind AI
+              PaperLens AI
             </h2>
             <p className="mt-2 max-w-md text-center text-sm text-ink-secondary">
               基于你收录的论文进行智能问答。

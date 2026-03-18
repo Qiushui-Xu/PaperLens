@@ -28,7 +28,7 @@ from packages.storage.repositories import AgentPendingActionRepository, PromptTr
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """\
-你是 PaperMind AI Agent，一个专业的学术论文研究助手。你能调用工具完成搜索、\
+你是 PaperLens AI Agent，一个专业的学术论文研究助手。你能调用工具完成搜索、\
 下载、分析、生成等研究任务。始终使用中文。
 
 ## 工具选择决策树（按优先级）

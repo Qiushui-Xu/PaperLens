@@ -1,4 +1,4 @@
-"""PaperMind API — 共享依赖
+"""PaperLens API — 共享依赖
 @author Color2333
 """
 

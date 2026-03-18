@@ -17,7 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 def main() -> None:
     print("=" * 50)
-    print("PaperMind 数据库初始化")
+    print("PaperLens 数据库初始化")
     print("=" * 50)
 
     # 强制使用容器内路径（避免环境变量冲突）

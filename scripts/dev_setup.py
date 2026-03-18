@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PaperMind 开发环境一键初始化脚本
+PaperLens 开发环境一键初始化脚本
 
 功能：
 - 检查 Python 版本
@@ -144,7 +144,7 @@ def main():
     """主函数"""
     print(f"""
 {Colors.BLUE}╔══════════════════════════════════════════╗
-║     PaperMind 开发环境初始化             ║
+║     PaperLens 开发环境初始化             ║
 ╚══════════════════════════════════════════╝{Colors.NC}
 """)
 

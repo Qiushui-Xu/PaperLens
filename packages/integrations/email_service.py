@@ -98,7 +98,7 @@ class EmailService:
         Returns:
             是否发送成功
         """
-        subject = f"📚 PaperMind 每日简报 - {report_date}"
+        subject = f"📚 PaperLens 每日简报 - {report_date}"
         return self.send_email(to_emails, subject, report_html)
 
 
@@ -131,7 +131,7 @@ def create_test_email(config: EmailConfig) -> bool:
         <div class="container">
             <div class="header">
                 <h1>✅ 邮箱配置测试成功！</h1>
-                <p>PaperMind 每日简报功能已就绪</p>
+                <p>PaperLens 每日简报功能已就绪</p>
             </div>
             <div class="content">
                 <p>恭喜！您的邮箱配置已成功设置。</p>
@@ -145,7 +145,7 @@ def create_test_email(config: EmailConfig) -> bool:
                 <p>祝您研究顺利！</p>
             </div>
             <div class="footer">
-                <p>Powered by PaperMind - 让 AI 帮你读论文</p>
+                <p>Powered by PaperLens - 让 AI 帮你读论文</p>
             </div>
         </div>
     </body>
@@ -154,7 +154,7 @@ def create_test_email(config: EmailConfig) -> bool:
 
     return service.send_email(
         to_emails=[config.sender_email],
-        subject="📧 PaperMind 邮箱配置测试",
+        subject="📧 PaperLens 邮箱配置测试",
         html_content=html_content,
     )
 

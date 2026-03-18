@@ -1,5 +1,5 @@
 """
-PaperMind API - FastAPI 入口
+PaperLens API - FastAPI 入口
 @author Color2333
 """
 

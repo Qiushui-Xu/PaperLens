@@ -1,5 +1,5 @@
 /**
- * PaperMind 桌面版 — 首次启动引导
+ * PaperLens 桌面版 — 首次启动引导
  * 让用户选择数据目录和 .env 配置文件路径。
  * @author Color2333
  */
@@ -23,7 +23,7 @@ interface Props {
 }
 
 export default function SetupWizard({ onReady }: Props) {
-  const home = "~/Library/Application Support/PaperMind/data";
+  const home = "~/Library/Application Support/PaperLens/data";
   const [dataDir, setDataDir] = useState(home);
   const [envFile, setEnvFile] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,7 +67,7 @@ export default function SetupWizard({ onReady }: Props) {
             <Sparkles className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            欢迎使用 PaperMind
+            欢迎使用 PaperLens
           </h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             首次启动，请配置数据存储路径
@@ -149,14 +149,14 @@ export default function SetupWizard({ onReady }: Props) {
           ) : (
             <>
               <CheckCircle2 className="h-4 w-4" />
-              确认并启动 PaperMind
+              确认并启动 PaperLens
             </>
           )}
         </button>
 
         {/* 底部提示 */}
         <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
-          配置会保存在 ~/Library/Application Support/PaperMind/launcher.json
+          配置会保存在 ~/Library/Application Support/PaperLens/launcher.json
           <br />
           后续可在设置页面中修改
         </p>

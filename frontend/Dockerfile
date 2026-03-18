@@ -1,5 +1,5 @@
 # ============================================================
-# PaperMind Frontend Dockerfile - Nginx 托管静态文件
+# PaperLens Frontend Dockerfile - Nginx 托管静态文件
 # @author Color2333
 # ============================================================
 

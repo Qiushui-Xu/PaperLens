@@ -1,5 +1,5 @@
 /**
- * PaperMind 启动引导
+ * PaperLens 启动引导
  * Web 模式直接渲染 App；Tauri 模式先检测配置、等待后端就绪。
  * @author Color2333
  */

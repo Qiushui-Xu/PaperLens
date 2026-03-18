@@ -3,7 +3,7 @@ HuggingFace Daily Papers (Trending) client.
 
 Scrapes https://huggingface.co/papers for today's trending paper IDs,
 then fetches metadata via the HF papers API.  Returns PaperCreate objects
-compatible with PaperMind's ingest pipeline.
+compatible with PaperLens's ingest pipeline.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ class HFTrendingClient:
             self._client = httpx.Client(
                 timeout=30,
                 follow_redirects=True,
-                headers={"User-Agent": "PaperMind/1.0"},
+                headers={"User-Agent": "PaperLens/1.0"},
             )
         return self._client
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# PaperMind Docker 快速部署脚本
+# PaperLens Docker 快速部署脚本
 # @author Color2333
 #
 # 使用方法:
@@ -12,7 +12,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DEPLOY_DIR="$PROJECT_ROOT/deploy"
 
 echo "========================================"
-echo "PaperMind Docker 部署脚本"
+echo "PaperLens Docker 部署脚本"
 echo "========================================"
 echo
 

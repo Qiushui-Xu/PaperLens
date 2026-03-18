@@ -59,7 +59,7 @@ export default function EmailSettings() {
     smtp_port: 587,
     smtp_use_tls: true,
     sender_email: "",
-    sender_name: "PaperMind",
+    sender_name: "PaperLens",
     username: "",
     password: "",
   });
@@ -179,7 +179,7 @@ export default function EmailSettings() {
       smtp_port: 587,
       smtp_use_tls: true,
       sender_email: "",
-      sender_name: "PaperMind",
+      sender_name: "PaperLens",
       username: "",
       password: "",
     });
@@ -564,7 +564,7 @@ export default function EmailSettings() {
               </label>
               <Input
                 type="text"
-                placeholder="PaperMind"
+                placeholder="PaperLens"
                 value={emailForm.sender_name}
                 onChange={(e) => setEmailForm({ ...emailForm, sender_name: e.target.value })}
               />

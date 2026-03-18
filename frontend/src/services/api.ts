@@ -1,5 +1,5 @@
 /**
- * PaperMind - API 服务层
+ * PaperLens - API 服务层
  * @author Color2333
  */
 import type {

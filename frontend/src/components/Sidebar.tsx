@@ -144,7 +144,7 @@ export default function Sidebar() {
           <div className="mb-3 flex items-center gap-2.5 px-2">
             <LogoIcon className="h-7 w-7 text-primary" />
             <span className="text-base font-semibold tracking-tight text-ink">
-              PaperMind
+              PaperLens
             </span>
           </div>
           <button

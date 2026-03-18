@@ -26,7 +26,7 @@ class EmailConfigCreate(BaseModel):
     smtp_port: int = 587
     smtp_use_tls: bool = True
     sender_email: str
-    sender_name: str = "PaperMind"
+    sender_name: str = "PaperLens"
     username: str
     password: str
 

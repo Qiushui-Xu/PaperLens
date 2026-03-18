@@ -113,7 +113,7 @@ DAILY_TEMPLATE = Template("""\
 </head>
 <body>
 
-<h1>🧠 PaperMind 研究日报</h1>
+<h1>🧠 PaperLens 研究日报</h1>
 <div class="subtitle">{{ date }} · 由 AI 自动生成</div>
 
 <div class="stats">
@@ -286,7 +286,7 @@ DAILY_TEMPLATE = Template("""\
 {% endif %}
 
 <div class="footer">
-  PaperMind · AI 驱动的学术研究工作流平台<br>
+  PaperLens · AI 驱动的学术研究工作流平台<br>
   <a href="{{ site_url }}" target="_blank">{{ site_url }}</a>
 </div>
 
@@ -454,7 +454,7 @@ class DailyBriefService:
         saved = self.notifier.save_brief_html(filename, html)
         sent = False
         if recipient:
-            sent = self.notifier.send_email_html(recipient, "PaperMind Daily Brief", html)
+            sent = self.notifier.send_email_html(recipient, "PaperLens Daily Brief", html)
 
         # 写入 generated_content 表，确保研究简报页面能查到
         content_id = None

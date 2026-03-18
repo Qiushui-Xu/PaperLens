@@ -82,12 +82,18 @@ def _safe_add_column(
     column: str,
     col_type: str,
     default: str,
+    nullable: bool = False,
 ) -> None:
     """安全添加列（已存在则跳过）"""
     try:
-        conn.execute(
-            text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type} NOT NULL DEFAULT {default}")
-        )
+        if nullable:
+            conn.execute(
+                text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type} DEFAULT {default}")
+            )
+        else:
+            conn.execute(
+                text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type} NOT NULL DEFAULT {default}")
+            )
         conn.commit()
         logger.info("Added column %s.%s", table, column)
     except Exception:
@@ -136,7 +142,7 @@ def run_migrations() -> None:
         )
         _safe_add_column(conn, "papers", "favorited", "BOOLEAN", "0")
         _safe_add_column(conn, "papers", "user_viewed", "BOOLEAN", "0")
-        _safe_add_column(conn, "papers", "user_viewed_at", "DATETIME", "NULL")
+        _safe_add_column(conn, "papers", "user_viewed_at", "DATETIME", "NULL", nullable=True)
         # 关键列索引加速 ORDER BY / WHERE 查询
         _safe_create_index(conn, "ix_papers_created_at", "papers", "created_at")
         _safe_create_index(conn, "ix_prompt_traces_created_at", "prompt_traces", "created_at")

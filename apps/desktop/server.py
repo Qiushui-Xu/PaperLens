@@ -1,5 +1,5 @@
 """
-PaperMind Desktop Server — PyInstaller 入口
+PaperLens Desktop Server — PyInstaller 入口
 Tauri sidecar 调用此二进制，自动选端口 + 内嵌 scheduler。
 @author Color2333
 """
@@ -65,7 +65,7 @@ def main() -> None:
     env_file = Path(env_file_str).expanduser() if env_file_str else None
 
     if not data_dir or not data_dir.is_absolute():
-        data_dir = Path.home() / "Library" / "Application Support" / "PaperMind" / "data"
+        data_dir = Path.home() / "Library" / "Application Support" / "PaperLens" / "data"
 
     _setup_data_dir(data_dir)
     _apply_env_overrides(data_dir, env_file)
@@ -80,7 +80,7 @@ def main() -> None:
     sys.stdout.write(json.dumps({"port": port}) + "\n")
     sys.stdout.flush()
 
-    logger.info("PaperMind Desktop starting on 127.0.0.1:%d", port)
+    logger.info("PaperLens Desktop starting on 127.0.0.1:%d", port)
     logger.info("Data dir: %s", data_dir)
 
     _start_scheduler()

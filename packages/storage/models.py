@@ -432,7 +432,7 @@ class EmailConfig(Base):
     smtp_port: Mapped[int] = mapped_column(Integer, nullable=False, default=587)
     smtp_use_tls: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sender_email: Mapped[str] = mapped_column(String(256), nullable=False)
-    sender_name: Mapped[str] = mapped_column(String(128), nullable=False, default="PaperMind")
+    sender_name: Mapped[str] = mapped_column(String(128), nullable=False, default="PaperLens")
     username: Mapped[str] = mapped_column(String(256), nullable=False)
     password: Mapped[str] = mapped_column(String(512), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

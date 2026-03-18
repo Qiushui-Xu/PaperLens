@@ -1,1 +1,1 @@
-"""Shared packages for PaperMind."""
+"""Shared packages for PaperLens."""

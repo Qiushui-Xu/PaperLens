@@ -1,5 +1,5 @@
 /**
- * PaperMind - 登录页面
+ * PaperLens - 登录页面
  * @author Color2333
  */
 import { useState, useEffect } from "react";
@@ -62,7 +62,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
             <Lock className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">PaperMind</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">PaperLens</h1>
           <p className="text-slate-400 text-sm">请输入访问密码</p>
         </div>
 
@@ -109,7 +109,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
         {/* 底部提示 */}
         <p className="text-center mt-6 text-slate-500 text-xs">
-          PaperMind · AI 驱动的学术论文研究平台
+          PaperLens · AI 驱动的学术论文研究平台
         </p>
       </div>
     </div>

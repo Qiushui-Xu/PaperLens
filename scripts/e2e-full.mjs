@@ -1,5 +1,5 @@
 /**
- * PaperMind 全流程 E2E 深度测试
+ * PaperLens 全流程 E2E 深度测试
  * 模拟真实用户操作：导航、输入、点击、滚动、验证
  * @author Color2333
  */
@@ -50,7 +50,7 @@ const info = (msg) => console.log(`  ℹ️  ${msg}`);
 
   // 检查关键元素
   const logo = await page.textContent("body");
-  logo.includes("PaperMind") ? pass("Logo 存在") : fail("Logo 缺失");
+  logo.includes("PaperLens") ? pass("Logo 存在") : fail("Logo 缺失");
 
   // 检查统计卡片
   logo.includes("论文总量") ? pass("统计卡片: 论文总量") : fail("统计卡片缺失");
@@ -101,7 +101,7 @@ const info = (msg) => console.log(`  ℹ️  ${msg}`);
       await shot(page, "02-agent-chat-reply");
 
       const chatBody = await page.textContent("body");
-      const hasReply = chatBody.includes("PaperMind") || chatBody.includes("论文") || chatBody.length > 500;
+      const hasReply = chatBody.includes("PaperLens") || chatBody.includes("论文") || chatBody.length > 500;
       hasReply ? pass("Agent 回复已生成") : fail("Agent 未回复");
     } else {
       fail("发送按钮未找到");

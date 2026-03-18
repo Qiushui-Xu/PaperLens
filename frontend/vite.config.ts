@@ -1,5 +1,5 @@
 /**
- * PaperMind Frontend - Vite Configuration
+ * PaperLens Frontend - Vite Configuration
  * @author Color2333
  */
 import { defineConfig } from "vite";

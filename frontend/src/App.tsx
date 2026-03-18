@@ -1,5 +1,5 @@
 /**
- * PaperMind - 主应用路由（懒加载）
+ * PaperLens - 主应用路由（懒加载）
  * @author Color2333
  */
 import { lazy, Suspense, useEffect } from "react";

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Seed Clara's 7 research topics into PaperMind topic_subscriptions.
+Seed Clara's 7 research topics into PaperLens topic_subscriptions.
 
 Usage:
-    cd /path/to/PaperMind
+    cd /path/to/PaperLens
     .venv/bin/python scripts/seed_clara_topics.py
 """
 
